@@ -2,7 +2,7 @@
 
 set -o pipefail
 
-onyx ../build -I ../src -o onyx-lsp.wasm --debug
+onyx ../build -o onyx-lsp.wasm
 
 sudo cp ./onyx-lsp /usr/bin/onyx-lsp
 

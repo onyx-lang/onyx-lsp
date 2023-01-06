@@ -1,7 +1,7 @@
 
 use core
 
-port := 7988;
+port := 0;
 
 comm_socket: net.Socket;
 comm_reader: io.Reader;
@@ -45,9 +45,6 @@ process_incoming_message :: () {
 
     bytes_read, err := comm_reader->read_bytes(message);
     if err == .ReadPending do return;
-    assert(err == .None, "Expected buffer to fill completely.");
-
-    log(.Debug, message);
 
     json_rpc_handler->handle(message);
 }
@@ -56,24 +53,71 @@ listen_loop :: () {
     while true {
         alloc.clear_temp_allocator();
         log(.Debug, "Waiting for message...");
-        process_incoming_message();
+
+        if port > 0 {
+            change_buffer: [1] net.Socket_Poll_Status;
+            net.socket_poll_all(.[ ^comm_socket ], -1, change_buffer);
+
+            if change_buffer[0] == .Closed {
+                break;
+            }
+
+            if change_buffer[0] == .Readable {
+                while #bottom_test io.reader_get_buffered(^comm_reader) != 0 {
+                    process_incoming_message();
+                }
+            }
+
+        } else {
+            process_incoming_message();
+        }
     }
 }
 
 main :: (args) => {
     default_log_level(.Critical);
 
+    if string.starts_with(args[1] |> string.as_str(), "--port") {
+        _, port_str := string.bisect(args[1] |> string.as_str(), #char "=");
+        port = ~~ conv.parse_int(port_str);
+    }
+
     setup_jsonrpc();
 
-    // When a way to poll standard input is available,
-    // this should be used and the `stdin = true` should
-    // be removed.
-    // runtime.fs.__enable_non_blocking_stdin();
-    
-    comm_reader = io.reader_make(^stdio_stream);
-    comm_writer = stdio.print_writer;
+    if port > 0 {
+        // Create a TCP socket
+        listen_socket, _ := net.socket_create(.Inet, .Stream);
+        defer listen_socket->close();
 
-    comm_reader.stdin = true;
+        listen_socket->setting(.ReuseAddress, 1);
+
+        listen_addr: net.Socket_Address;
+        net.make_ipv4_address(^listen_addr, 0, ~~ port);
+        listen_socket->bind(^listen_addr);
+
+        log(.Info, tprintf("Listening on port {}", port));
+        listen_socket->listen();
+
+        socket_addr: #auto;
+        comm_socket, socket_addr = listen_socket->accept();
+        defer comm_socket->close();
+
+        comm_socket->setting(.NonBlocking, 1);
+
+        comm_reader = io.reader_make(^comm_socket);
+        comm_writer = io.writer_make(^comm_socket, 0);
+    
+    } else {
+        // When a way to poll standard input is available,
+        // this should be used and the `stdin = true` should
+        // be removed.
+        // runtime.fs.__enable_non_blocking_stdin();
+        
+        comm_reader = io.reader_make(^stdio_stream);
+        comm_writer = stdio.print_writer;
+
+        comm_reader.stdin = true;
+    }
 
     json_rpc_handler->set_output_callback(^comm_writer, (w: ^io.Writer, msg: str) => {
         io.write_format(w, "Content-Length: {}\r\n", msg.length);
@@ -85,49 +129,3 @@ main :: (args) => {
     listen_loop();
 }
 
-
-
-//
-// Old Code
-//
-        /*
-setup_tcp_handler :: () {
-#if false {
-    // Create a TCP socket
-    listen_socket, _ := net.socket_create(.Inet, .Stream);
-    defer listen_socket->close();
-
-    listen_socket->setting(.ReuseAddress, 1);
-
-    listen_addr: net.Socket_Address;
-    net.make_ipv4_address(^listen_addr, 0, ~~ port);
-    println(listen_addr);
-    listen_socket->bind(^listen_addr);
-
-    log(.Info, tprintf("Listening on port {}", port));
-    listen_socket->listen();
-
-    socket_addr: #auto;
-    comm_socket, socket_addr = listen_socket->accept();
-    defer comm_socket->close();
-
-    comm_socket->setting(.NonBlocking, 1);
-
-    comm_reader = io.reader_make(^comm_socket);
-    comm_writer = io.writer_make(^comm_socket, 0);
-}
-}
-
-        change_buffer: [1] net.Socket_Poll_Status;
-        net.socket_poll_all(.[ ^comm_socket ], -1, change_buffer);
-
-        if change_buffer[0] == .Closed {
-            break;
-        }
-
-        if change_buffer[0] == .Readable {
-            while #bottom_test io.reader_get_buffered(^comm_reader) != 0 {
-                process_incoming_message();
-            }
-        }
-        */
