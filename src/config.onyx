@@ -1,0 +1,38 @@
+
+use core
+
+LSP_CONFIG_FILE_NAME :: "onyx-lsp.ini"
+
+LSPConfigContainer :: struct {
+    lsp := LSPConfig.{};
+}
+
+LSPConfig :: struct {
+    workingDir:  str = ".";
+    includeDirs: str = "";
+    onyxFiles:   str = "";
+    mode:        str = "file";
+}
+
+global_config: LSPConfigContainer;
+
+load_config :: (folder: str) -> bool {
+    global_config = LSPConfigContainer.{};
+
+    full_path := tprintf("{}/{}", folder, LSP_CONFIG_FILE_NAME);
+
+    success := false;
+    for os.with_file(full_path) {
+        r := io.reader_make(it);
+        defer io.reader_free(^r);
+
+        if s, e := encoding.ini.parse_ini_file(^r, ^global_config); s != .Success {
+            success = false;
+        } else {
+            success = true;
+        }
+    }
+
+    return success;
+}
+

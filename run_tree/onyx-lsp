@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec onyx-run $1 /usr/share/onyx/tools/onyx-lsp.wasm

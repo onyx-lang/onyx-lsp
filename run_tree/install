@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -o pipefail
+
+onyx ../build -I ../src -o onyx-lsp.wasm --debug
+
+sudo cp ./onyx-lsp /usr/bin/onyx-lsp
+
+sudo mkdir -p /usr/share/onyx/tools
+sudo cp ./onyx-lsp.wasm /usr/share/onyx/tools/onyx-lsp.wasm
+

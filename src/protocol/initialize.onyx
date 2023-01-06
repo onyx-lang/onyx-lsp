@@ -1,0 +1,84 @@
+
+use core
+use json_rpc {
+    Method,
+    Context,
+    Status,
+    Notification
+}
+
+InitializeRequest :: struct {
+    capabilities: ClientCapabilities;
+
+    rootPath: str;
+}
+
+ClientCapabilities :: struct {
+    textDocument: struct {
+        publishDiagnostics: struct {
+            relatedInformation: bool;
+            tagSupport: struct {
+                valueSet: [] i32;
+            }
+        }
+    };
+}
+
+InitializeResult :: struct {
+    capabilities: ServerCapabilities;
+
+    serverInfo: struct {
+        name: str;
+        version: str;
+    };
+}
+
+ServerCapabilities :: struct {
+    positionEncoding: str;
+    diagnosticProvider: struct {
+        interFileDependencies: bool;
+        workspaceDiagnostics: bool;
+    };
+
+    textDocumentSync: struct {
+        openClose: bool;
+        change: i32;
+        save: bool;
+    };
+}
+
+@Method.{"initialize"}
+(c: ^Context, in: ^InitializeRequest, out: ^InitializeResult) -> Status {
+    log(.Info, core.tprintf("Client has capabilties: {*p}", ^in.capabilities));
+    log(.Info, core.tprintf("Client is in folder: {}", in.rootPath));
+
+    if !load_config(in.rootPath) {
+        eprintf("Failed to open config file 'onyx-lsp.ini'\n");
+        os.exit(1);
+    }
+
+    out.capabilities = .{
+        positionEncoding = "utf-8",
+        diagnosticProvider = .{
+            interFileDependencies = true,
+            workspaceDiagnostics = true
+        },
+        textDocumentSync = .{
+            openClose = true,
+            change = 2,
+            save = true
+        }
+    };
+
+    out.serverInfo = .{
+        name = "onyx-lsp",
+        version = "0.0.1"
+    };
+
+    return .Success;
+}
+
+@Notification.{"initialized"}
+(c: ^Context, _: ^void) {
+    log(.Info, "Successfully initialized");
+}
