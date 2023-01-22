@@ -50,7 +50,7 @@ process_incoming_message :: () {
 }
 
 listen_loop :: () {
-    while true {
+    while !comm_reader.done {
         alloc.clear_temp_allocator();
         log(.Debug, "Waiting for message...");
 

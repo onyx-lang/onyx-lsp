@@ -109,8 +109,8 @@ update_diagnostics :: (c: ^Context, uri: str) {
         for^ err: it.errors {
             diagnostics << .{
                 .{
-                    .{ line = err.line - 1, character = err.column - 1 },
-                    .{ line = err.line - 1, character = err.column },
+                    .{ line = err.line - 1, character = err.start_column - 1 },
+                    .{ line = err.line - 1, character = err.end_column - 1 },
                 },
                 err.msg
             };
@@ -123,7 +123,8 @@ update_diagnostics :: (c: ^Context, uri: str) {
 CompilationError :: struct {
     file: str;
     line: u32;
-    column: u32;
+    start_column: u32;
+    end_column: u32;
     msg: str;
 }
 
@@ -140,9 +141,7 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
 
     switch global_config.lsp.mode {
         case "project" {
-            for string.split_iter(global_config.lsp.onyxFiles, #char " ") {
-                args << it;
-            }
+            array.concat(^args, string.split_iter(global_config.lsp.onyxFiles, #char " "));
         }
 
         case "file" {
@@ -180,8 +179,13 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
             string.advance(^line, 2);
             msg := string.temp_copy(string.strip_whitespace(line));
 
+            _, output' := string.bisect(output, #char "\n");
+            underline_line, output' := string.bisect(output, #char "\n");
+
+            string.strip_whitespace(^underline_line);
+
             errors << .{
-                filename, ~~line_number, ~~col, msg
+                filename, ~~line_number, ~~col, ~~col + underline_line.count, msg
             };
         }
     }

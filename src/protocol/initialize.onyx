@@ -35,10 +35,6 @@ InitializeResult :: struct {
 
 ServerCapabilities :: struct {
     positionEncoding: str;
-    diagnosticProvider: struct {
-        interFileDependencies: bool;
-        workspaceDiagnostics: bool;
-    };
 
     textDocumentSync: struct {
         openClose: bool;
@@ -58,11 +54,7 @@ ServerCapabilities :: struct {
     }
 
     out.capabilities = .{
-        positionEncoding = "utf-8",
-        diagnosticProvider = .{
-            interFileDependencies = true,
-            workspaceDiagnostics = true
-        },
+        positionEncoding = "utf-16",
         textDocumentSync = .{
             openClose = true,
             change = 2,

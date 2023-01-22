@@ -1,0 +1,24 @@
+
+use core
+use json_rpc {
+    Method,
+    Context,
+    Status,
+    Notification
+}
+
+#local
+recv_shutdown := false
+
+@Method.{ "shutdown" }
+(c: ^Context, in: ^void, out: ^void) -> Status {
+    recv_shutdown = true;
+
+    return .Success;
+}
+
+
+@Notification.{ "exit" }
+(c: ^Context, _: ^void) {
+    os.exit(0 if recv_shutdown else 1);
+}
