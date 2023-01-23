@@ -41,6 +41,8 @@ ServerCapabilities :: struct {
         change: i32;
         save: bool;
     };
+
+    definitionProvider: bool;
 }
 
 @Method.{"initialize"}
@@ -59,7 +61,8 @@ ServerCapabilities :: struct {
             openClose = true,
             change = 2,
             save = true
-        }
+        },
+        definitionProvider = false
     };
 
     out.serverInfo = .{

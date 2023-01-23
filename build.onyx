@@ -5,6 +5,7 @@
 
 #load_all "./src"
 #load_all "./src/protocol"
+#load_all "./src/language"
 
 #load "./lib/json/module"
 #load "./lib/json-rpc/module"

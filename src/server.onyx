@@ -76,6 +76,7 @@ listen_loop :: () {
 
 main :: (args) => {
     default_log_level(.Critical);
+    random.set_seed(os.time());
 
     if string.starts_with(args[1] |> string.as_str(), "--port") {
         _, port_str := string.bisect(args[1] |> string.as_str(), #char "=");

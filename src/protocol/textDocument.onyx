@@ -43,14 +43,14 @@ Position :: struct {
     character: u32;
 }
 
+Range :: struct {
+    start: Position;
+    end: Position;
+}
+
 Diagnostic :: struct {
-    range: struct {
-        start: Position;
-        end: Position;
-    };
-
+    range: Range;
     message: str;
-
 }
 
 @Notification.{"textDocument/didChange"}
@@ -64,7 +64,6 @@ Diagnostic :: struct {
     log(.Info, "Document changed, {}\n", item.textDocument.uri);
     update_diagnostics(c, item.textDocument.uri);
 }
-
 
 update_diagnostics :: (c: ^Context, uri: str) {
     filename := do {
@@ -120,76 +119,33 @@ update_diagnostics :: (c: ^Context, uri: str) {
     }
 }
 
-CompilationError :: struct {
-    file: str;
-    line: u32;
-    start_column: u32;
-    end_column: u32;
-    msg: str;
+
+TextDocumentPosition :: struct {
+    textDocument: struct {
+        uri: str;
+    };
+
+    position: Position;
 }
 
-// :Relocate
-run_onyx_check :: (filename: str) -> [] CompilationError {
-    // :Config
-    args := array.make(.["check", "--no-colors"]);
-    defer delete(^args);
+TextDocumentLocation :: struct {
+    uri: str;
+    range: Range;
+}
 
-    for string.split_iter(global_config.lsp.includeDirs, #char " ") {
-        args << "-I";
-        args << it;
+
+@Method.{"textDocument/definition"}
+(c: ^Context, in: ^TextDocumentPosition, out: ^TextDocumentLocation) -> Status {
+    location := lookup_symbol(.{in.textDocument.uri, in.position.line, in.position.character});
+
+    if location {
+        out.uri = tprintf("file://{}", location.value.filename);
+        out.range.start = .{ location.value.line - 1, location.value.column - 1 };
+        out.range.end   = .{ location.value.line - 1, location.value.column };
+
+        return .Success;
     }
 
-    switch global_config.lsp.mode {
-        case "project" {
-            array.concat(^args, string.split_iter(global_config.lsp.onyxFiles, #char " "));
-        }
-
-        case "file" {
-            args << filename;
-        }
-    }
-
-    proc := os.process_spawn("onyx", args, starting_directory=global_config.lsp.workingDir);
-
-    r := io.reader_make(^proc);
-    output := r->read_all();
-
-    original_output := output;
-    defer if original_output do delete(^original_output);
-
-    errors := make([..] CompilationError);
-
-    if os.process_wait(^proc) == .Success {
-        return errors;
-    }
-
-    while output {
-        line, output' := string.bisect(output, #char "\n");
-
-        if string.starts_with(line, "(") {
-            string.advance(^line, 1);
-            filename := string.temp_copy(string.read_until(^line, #char ":"));
-
-            string.advance(^line, 1);
-            line_number := conv.parse_int(^line);
-
-            string.advance(^line, 1);
-            col := conv.parse_int(^line);
-
-            string.advance(^line, 2);
-            msg := string.temp_copy(string.strip_whitespace(line));
-
-            _, output' := string.bisect(output, #char "\n");
-            underline_line, output' := string.bisect(output, #char "\n");
-
-            string.strip_whitespace(^underline_line);
-
-            errors << .{
-                filename, ~~line_number, ~~col, ~~col + underline_line.count, msg
-            };
-        }
-    }
-    
-    return errors;
+    return .Return_Null;
 }
 
