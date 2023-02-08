@@ -43,8 +43,6 @@ refresh_symbol_registry :: (filename: str) {
 
     symbol_resolutions.data = ~~ ^symbol_info_contents[header.symbol_res_offset];
     symbol_resolutions.count = header.symbol_res_count;
-
-    array.quicksort(symbol_resolutions, Symbol_Resolution.compare);
 }
 
 
@@ -94,12 +92,16 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
         return .{};
     }
 
-    // :Hack
-    while Symbol_Resolution.compare(tmp_symbol_resolution, symbol_resolutions[index]) == 0 {
+    //
+    // As an optimization, not all symbol resolutions are sorted completely.
+    // Instead, any resolution that is on the same line of the same file is
+    // considered equal. Because of this, we have to search for the beginning
+    // this sequence of "equal" items and then loop though them individually.
+    // 
+    while index > 0 &&
+        Symbol_Resolution.compare(tmp_symbol_resolution, symbol_resolutions[index - 1]) == 0 {
         index -= 1;
     }
-
-    index += 1;
 
     while true {
         sym_res := ^symbol_resolutions[index];
