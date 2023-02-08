@@ -18,7 +18,7 @@ refresh_symbol_registry :: (filename: str) {
     }
 
     // Read in the file data. This cannot be done directly like the
-    // cases below, because the file data has names, which are consistent
+    // cases below, because the file data has names, which are inconsistent
     // in length.
     files = make(typeof files, header.file_def_count);
 
@@ -67,7 +67,8 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
     bottom := 0;
 
     index: i32;
-    while true {
+    found := false;
+    while top != bottom {
         index = (top - bottom) / 2 + bottom;
 
         comp := Symbol_Resolution.compare(
@@ -75,7 +76,10 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
             symbol_resolutions[index]
         );
 
-        if comp == 0 do break;
+        if comp == 0 {
+            found = true;
+            break;
+        }
 
         if comp < 0 {
             top = index - 1;
@@ -86,6 +90,10 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
         }
     }
 
+    if !found {
+        return .{};
+    }
+
     // :Hack
     while Symbol_Resolution.compare(tmp_symbol_resolution, symbol_resolutions[index]) == 0 {
         index -= 1;
@@ -93,12 +101,11 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
 
     index += 1;
 
-
     while true {
         sym_res := ^symbol_resolutions[index];
         if sym_res.line != location.line do break;
 
-        if sym_res.column <= location.column && location.column <= location.column + sym_res.length {
+        if sym_res.column <= location.column && location.column <= sym_res.column + sym_res.length {
             sym_def := ^symbol_definitions[sym_res.symbol_id];
             assert(sym_res.symbol_id == sym_def.symbol_id, "Expected symbol id's to match");
 
@@ -133,23 +140,30 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
     }
 
     File_Definition :: struct {
-        id: u32;
+        id: i32;
         name: str;
     }
 
     Symbol_Definition :: struct {
         symbol_id: u32;
-        file_id: u32;
-        line: u32;
+        file_id: i32;
+        line: i32;
         column: u32;
     }
 
     Symbol_Resolution :: struct {
-        file_id: u32;
-        line: u32;
+        file_id: i32;
+        line: i32;
         column: u32;
         length: u32;
         symbol_id: u32;
+    }
+
+    #inject
+    Symbol_Resolution.compare :: (x, y: Symbol_Resolution) -> i32 {
+        if x.file_id != y.file_id do return x.file_id - y.file_id;
+        if x.line != y.line do return x.line - y.line;
+        return 0;
     }
 
     symbol_info_contents: [] u8
@@ -159,10 +173,4 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
     symbol_resolutions: [] Symbol_Resolution
 }
 
-#inject
-Symbol_Resolution.compare :: (x, y: Symbol_Resolution) -> i32 {
-    if x.file_id != y.file_id do return x.file_id - y.file_id;
-    if x.line != y.line do return x.line - y.line;
-    return 0;
-}
 

@@ -136,7 +136,8 @@ TextDocumentLocation :: struct {
 
 @Method.{"textDocument/definition"}
 (c: ^Context, in: ^TextDocumentPosition, out: ^TextDocumentLocation) -> Status {
-    location := lookup_symbol(.{in.textDocument.uri, in.position.line, in.position.character});
+    // Need to un-zero-index the line and column
+    location := lookup_symbol(.{in.textDocument.uri, in.position.line + 1, in.position.character + 1});
 
     if location {
         out.uri = tprintf("file://{}", location.value.filename);

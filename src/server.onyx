@@ -116,8 +116,6 @@ main :: (args) => {
         
         comm_reader = io.reader_make(^stdio_stream);
         comm_writer = stdio.print_writer;
-
-        comm_reader.stdin = true;
     }
 
     json_rpc_handler->set_output_callback(^comm_writer, (w: ^io.Writer, msg: str) => {

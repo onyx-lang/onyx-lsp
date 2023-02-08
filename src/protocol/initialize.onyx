@@ -62,7 +62,7 @@ ServerCapabilities :: struct {
             change = 2,
             save = true
         },
-        definitionProvider = false
+        definitionProvider = true
     };
 
     out.serverInfo = .{
@@ -76,4 +76,11 @@ ServerCapabilities :: struct {
 @Notification.{"initialized"}
 (c: ^Context, _: ^void) {
     log(.Info, "Successfully initialized");
+
+    //
+    // If this is a project, update all diagnostics and symbol information
+    // right away, instead of waiting for a file to be saved.
+    if global_config.lsp.mode == "project" {
+        update_diagnostics(c, "");
+    }
 }
