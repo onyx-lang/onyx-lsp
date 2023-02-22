@@ -78,6 +78,14 @@ main :: (args) => {
     default_log_level(.Critical);
     random.set_seed(os.time());
 
+    if args.count > 0 && string.starts_with(args[1] |> string.as_str(), "init") {
+        for os.with_file("./onyx-lsp.ini", .Write) {
+            io.stream_write(it, Onyx_Lsp_Template_File);
+        }
+
+        return;
+    }
+
     if string.starts_with(args[1] |> string.as_str(), "--port") {
         _, port_str := string.bisect(args[1] |> string.as_str(), #char "=");
         port = ~~ conv.parse_int(port_str);
@@ -114,7 +122,7 @@ main :: (args) => {
         // be removed.
         // runtime.fs.__enable_non_blocking_stdin();
         
-        comm_reader = io.reader_make(^stdio_stream);
+        comm_reader = io.reader_make(^stdio.stream);
         comm_writer = stdio.print_writer;
     }
 
@@ -127,4 +135,10 @@ main :: (args) => {
 
     listen_loop();
 }
+
+Onyx_Lsp_Template_File :: """[lsp]
+mode=project
+onyxFiles=name_of_main_onyx_file
+workingDir=.
+"""
 
