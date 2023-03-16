@@ -51,7 +51,7 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
     }
 
     while output {
-        line, output' := string.bisect(output, #char "\n");
+        line, output~ := string.bisect(output, #char "\n");
 
         if string.starts_with(line, "(") {
             string.advance(^line, 1);
@@ -66,8 +66,8 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
             string.advance(^line, 2);
             msg := string.temp_copy(string.strip_whitespace(line));
 
-            _, output' := string.bisect(output, #char "\n");
-            underline_line, output' := string.bisect(output, #char "\n");
+            _, output~ := string.bisect(output, #char "\n");
+            underline_line, output~ := string.bisect(output, #char "\n");
 
             string.strip_whitespace(^underline_line);
 

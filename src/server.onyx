@@ -78,7 +78,7 @@ main :: (args) => {
     default_log_level(.Critical);
     random.set_seed(os.time());
 
-    if args.count > 0 && string.starts_with(args[1] |> string.as_str(), "init") {
+    if args.count > 0 && string.starts_with(args[0] |> string.as_str(), "init") {
         for os.with_file("./onyx-lsp.ini", .Write) {
             io.stream_write(it, Onyx_Lsp_Template_File);
         }
@@ -86,8 +86,8 @@ main :: (args) => {
         return;
     }
 
-    if string.starts_with(args[1] |> string.as_str(), "--port") {
-        _, port_str := string.bisect(args[1] |> string.as_str(), #char "=");
+    if string.starts_with(args[0] |> string.as_str(), "--port") {
+        _, port_str := string.bisect(args[0] |> string.as_str(), #char "=");
         port = ~~ conv.parse_int(port_str);
     }
 
