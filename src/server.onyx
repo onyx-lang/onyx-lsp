@@ -1,5 +1,7 @@
 
-use core
+use core {net, io, string, conv, random, alloc, os, stdio}
+use core {tprintf, printf, __flush_stdio}
+use json_rpc
 
 port := 0;
 
@@ -9,10 +11,12 @@ comm_writer: io.Writer;
 json_rpc_handler: json_rpc.Context;
 
 setup_jsonrpc :: () {
+    use main { MAIN_PKG :: package }
+
     json_rpc_handler = json_rpc.handler();
 
     json_rpc_handler->set_metadata("onyx-lsp", "Onyx Language Server", "0.0.1");
-    json_rpc_handler->collect_methods(.[package main]);
+    json_rpc_handler->collect_methods(.[MAIN_PKG]);
     json_rpc_handler->enable_openrpc_discovery();
 }
 

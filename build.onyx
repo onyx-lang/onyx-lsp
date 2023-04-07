@@ -1,6 +1,7 @@
 #load "core/std"
 #load "core/encoding/ini"
 
+use runtime
 #inject runtime.vars.Enable_Heap_Debug :: true
 
 #load_all "./src"

@@ -1,5 +1,6 @@
 
-use core
+use core {os, array, string}
+use core {eprintf}
 
 refresh_symbol_registry :: (filename: str) {
     // First, flush all old memory that is not needed any more.

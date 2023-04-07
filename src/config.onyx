@@ -1,5 +1,6 @@
 
-use core
+use core {tprintf}
+use core {io, encoding, os}
 
 LSP_CONFIG_FILE_NAME :: "onyx-lsp.ini"
 

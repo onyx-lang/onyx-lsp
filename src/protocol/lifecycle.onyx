@@ -1,5 +1,6 @@
 
-use core
+use core {os}
+use core {aprintf}
 use json_rpc {
     Method,
     Context,

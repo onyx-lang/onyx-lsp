@@ -1,4 +1,5 @@
-use core
+use core {string, array}
+use core {tprintf, aprintf}
 use json_rpc {
     Method,
     Context,
