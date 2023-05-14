@@ -2,6 +2,10 @@
 
 set -o pipefail
 
+pushd ..
+onyx pkg sync
+popd
+
 onyx build ../build -o onyx-lsp.wasm
 
 sudo cp ./onyx-lsp /usr/bin/onyx-lsp
