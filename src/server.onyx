@@ -58,6 +58,12 @@ listen_loop :: () {
         alloc.clear_temp_allocator();
         log(.Debug, "Waiting for message...");
 
+        //
+        // For some reason, there is a non-zero chance that we enter an infinite
+        // expensive loop when the host process closes the pipe for standard input.
+        // This appears to help, but I have not solved the root cause of the issue.
+        io.reader_reset(&comm_reader);
+
         if port > 0 {
             change_buffer: [1] net.Socket_Poll_Status;
             net.socket_poll_all(.[ ^comm_socket ], -1, change_buffer);
