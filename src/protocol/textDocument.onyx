@@ -140,14 +140,16 @@ TextDocumentLocation :: struct {
     // Need to un-zero-index the line and column
     location := lookup_symbol(.{in.textDocument.uri, in.position.line + 1, in.position.character + 1});
 
-    if location {
-        out.uri = tprintf("file://{}", location.value.filename);
-        out.range.start = .{ location.value.line - 1, location.value.column - 1 };
-        out.range.end   = .{ location.value.line - 1, location.value.column };
+    switch location {
+        case .Some => l {
+            out.uri = tprintf("file://{}", l.filename);
+            out.range.start = .{ l.line - 1, l.column - 1 };
+            out.range.end   = .{ l.line - 1, l.column };
 
-        return .Success;
+            return .Success;
+        }
+
+        case .None do return .Return_Null;
     }
-
-    return .Return_Null;
 }
 
