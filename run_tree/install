@@ -6,7 +6,7 @@ pushd ..
 onyx pkg sync
 popd
 
-onyx build ../build -o onyx-lsp.wasm
+onyx build ../build -o onyx-lsp.wasm -V
 
 sudo cp ./onyx-lsp /usr/bin/onyx-lsp
 
