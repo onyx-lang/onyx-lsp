@@ -29,7 +29,7 @@ TextDocumentItem :: struct {
     // :Config ??
     if item.textDocument.languageId != "onyx" do return;
 
-    if !array.contains(known_files, #(it.uri == item.textDocument.uri)) {
+    if !array.contains(known_files, [](it.uri == item.textDocument.uri)) {
         known_files << .{ string.alloc_copy(item.textDocument.uri) };
     }
 }
@@ -84,10 +84,10 @@ update_diagnostics :: (c: ^Context, uri: str) {
     }
 
     for err: errors {
-        in_file := array.first(known_files, #(string.contains(it.uri, err.file)));
+        in_file := array.first(known_files, [f](string.contains(f.uri, err.file)));
         if !in_file {
             known_files << .{ aprintf("file://{}", err.file) };
-            in_file = array.first(known_files, #(string.contains(it.uri, err.file)));
+            in_file = array.first(known_files, [f](string.contains(f.uri, err.file)));
         }
 
         in_file.errors << err;

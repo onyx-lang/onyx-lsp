@@ -55,7 +55,7 @@ SymbolLocation :: struct {
 
 lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
     // :NotURI
-    file_def := array.first(files, #(string.contains(location.filename, it.name)));
+    file_def := array.first(files, [](string.contains(location.filename, it.name)));
     if !file_def do return .{};
 
     file_id := file_def.id;
