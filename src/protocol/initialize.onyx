@@ -51,15 +51,14 @@ ServerCapabilities :: struct {
     log(.Info, core.tprintf("Client is in folder: {}", in.rootPath));
 
     if !load_config(in.rootPath) {
-        eprintf("Failed to open config file 'onyx-lsp.ini'\n");
-        os.exit(1);
+        eprintf("Failed to open config file 'onyx-lsp.ini', using defaults.\n");
     }
 
     out.capabilities = .{
         positionEncoding = "utf-16",
         textDocumentSync = .{
-            openClose = true,
-            change = 2,
+            openClose = false,
+            change = 0,
             save = true
         },
         definitionProvider = true

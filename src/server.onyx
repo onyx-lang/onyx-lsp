@@ -23,7 +23,9 @@ setup_jsonrpc :: () {
 process_incoming_message :: () {
     length := 0;
     while true {
-        line := comm_reader->read_line(consume_newline=true, inplace=true);
+        line := comm_reader->read_line(consume_newline=true);
+        defer delete(&line);
+
         if line == "" do return;
         if line == "\r\n" do break;
 
@@ -44,13 +46,25 @@ process_incoming_message :: () {
     if length == 0 do return;
 
     log(.Debug, tprintf("Message is {} bytes.", length));
-    message := make([] u8, length); 
+    message := make([] u8, length);
     defer delete(^message);
 
-    bytes_read, err := comm_reader->read_bytes(message);
-    if err == .ReadPending do return;
+    err := comm_reader->read_fill_buffer(message);
+    log(.Debug, tprintf("{}", err));
+    assert(err == .None, "Failed to fill buffer, client was dumb. Dying now.");
 
-    json_rpc_handler->handle(message);
+    log(.Debug, message);
+    if string.empty(message) {
+        comm_reader.done = false;
+        return;
+    }
+
+    {
+        // old_allocator := context.allocator;
+        // context.allocator = alloc.log.logging_allocator(&old_allocator);
+
+        json_rpc_handler->handle(message);
+    }
 }
 
 listen_loop :: () {
@@ -65,14 +79,13 @@ listen_loop :: () {
         io.reader_reset(&comm_reader);
 
         if port > 0 {
-            change_buffer: [1] net.Socket_Poll_Status;
-            net.socket_poll_all(.[ ^comm_socket ], -1, change_buffer);
+            change := comm_socket->poll();
 
-            if change_buffer[0] == .Closed {
+            if change == .Closed {
                 break;
             }
 
-            if change_buffer[0] == .Readable {
+            if change == .Readable {
                 while #bottom_test io.reader_get_buffered(^comm_reader) != 0 {
                     process_incoming_message();
                 }
@@ -82,10 +95,25 @@ listen_loop :: () {
             process_incoming_message();
         }
     }
+
+    log(.Debug, "Cleaning exiting...");
 }
 
 main :: (args) => {
-    default_log_level(.Critical);
+
+    #if !#defined(runtime.vars.Debug) {
+        default_log_level(.Debug);
+        file_logger := os.file_logger_open("/tmp/onyx_lsp_log")->unwrap();
+        os.file_logger_use(file_logger);
+        defer os.file_logger_close(file_logger);
+
+        // old_allocator := context.allocator;
+        // context.allocator = alloc.log.logging_allocator(&old_allocator);
+
+    } else {
+        default_log_level(.Critical);
+    }
+
     random.set_seed(os.time());
 
     if args.count > 0 && string.starts_with(args[0] |> string.as_str(), "init") {
@@ -105,23 +133,22 @@ main :: (args) => {
 
     if port > 0 {
         // Create a TCP socket
-        listen_socket, _ := net.socket_create(.Inet, .Stream);
+        listen_socket := net.socket_create(.Inet, .Stream, .ANY)->unwrap();
         defer listen_socket->close();
 
-        listen_socket->setting(.ReuseAddress, 1);
+        listen_socket->option(.ReuseAddress, true);
 
-        listen_addr: net.Socket_Address;
-        net.make_ipv4_address(^listen_addr, 0, ~~ port);
-        listen_socket->bind(^listen_addr);
+        listen_addr: net.SocketAddress;
+        net.make_ipv4_address(&listen_addr, 0, ~~ port);
+        listen_socket->bind(&listen_addr);
 
         log(.Info, tprintf("Listening on port {}", port));
         listen_socket->listen();
 
-        socket_addr: #auto;
-        comm_socket, socket_addr = listen_socket->accept();
+        comm_socket = listen_socket->accept()->unwrap().socket;
         defer comm_socket->close();
 
-        comm_socket->setting(.NonBlocking, 1);
+        comm_socket->option(.NonBlocking, true);
 
         comm_reader = io.reader_make(^comm_socket);
         comm_writer = io.writer_make(^comm_socket, 0);
@@ -137,6 +164,7 @@ main :: (args) => {
     }
 
     json_rpc_handler->set_output_callback(^comm_writer, (w: ^io.Writer, msg: str) => {
+        log(.Debug, msg);
         io.write_format(w, "Content-Length: {}\r\n", msg.length);
         io.write(w, "\r\n");
         io.write(w, msg);

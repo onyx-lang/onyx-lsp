@@ -29,6 +29,7 @@ load_config :: (folder: str) -> bool {
 
         if s, e := encoding.ini.parse_ini_file(^r, ^global_config); s != .Success {
             success = false;
+            global_config = .{};
         } else {
             success = true;
         }

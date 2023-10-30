@@ -1,6 +1,6 @@
 
 use core {os, array, string}
-use core {eprintf}
+use core {eprintf, tprintf}
 
 refresh_symbol_registry :: (filename: str) {
     // First, flush all old memory that is not needed any more.
@@ -53,10 +53,14 @@ SymbolLocation :: struct {
     line, column: u32;
 }
 
-lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
+lookup_symbol :: (location: SymbolLocation) -> ? SymbolLocation {
+    log(.Debug, tprintf("Looking up: {}\n", location));
+
     // :NotURI
     file_def := array.first(files, [](string.contains(location.filename, it.name)));
     if !file_def do return .{};
+
+    log(.Debug, tprintf("In file: {*}\n", file_def));
 
     file_id := file_def.id;
     tmp_symbol_resolution := Symbol_Resolution.{file_id, location.line, location.column};
@@ -67,10 +71,13 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
 
     index: i32;
     found := false;
-    while top != bottom {
+    while top >= bottom {
         index = (top - bottom) / 2 + bottom;
 
-        comp := Symbol_Resolution.compare(
+        use core
+        logf(.Debug, "Index: {}\nSymres: {}", index, symbol_resolutions[index]);
+
+        comp := Symbol_Resolution.compare_loose(
             tmp_symbol_resolution,
             symbol_resolutions[index]
         );
@@ -90,8 +97,26 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
     }
 
     if !found {
+        log(.Debug, "Not found");
         return .{};
     }
+
+    sym_res := &symbol_resolutions[index];
+    log(.Debug, tprintf("Symres: {*}\n", sym_res));
+    if sym_res.line != location.line do return .{};
+    if sym_res.column <= location.column && location.column <= sym_res.column + sym_res.length {
+        sym_def := ^symbol_definitions[sym_res.symbol_id];
+        assert(sym_res.symbol_id == sym_def.symbol_id, "Expected symbol id's to match");
+
+        result_filename := files[sym_def.file_id].name;
+
+        return SymbolLocation.{
+            result_filename,
+            sym_def.line,
+            sym_def.column
+        };
+    }
+
 
     //
     // As an optimization, not all symbol resolutions are sorted completely.
@@ -99,30 +124,30 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
     // considered equal. Because of this, we have to search for the beginning
     // this sequence of "equal" items and then loop though them individually.
     // 
-    while index > 0 &&
-        Symbol_Resolution.compare(tmp_symbol_resolution, symbol_resolutions[index - 1]) == 0 {
-        index -= 1;
-    }
+    // while index > 0 &&
+    //     Symbol_Resolution.compare(tmp_symbol_resolution, symbol_resolutions[index - 1]) == 0 {
+    //     index -= 1;
+    // }
 
-    while true {
-        sym_res := ^symbol_resolutions[index];
-        if sym_res.line != location.line do break;
+    // while index < symbol_resolutions.length {
+    //     sym_res := ^symbol_resolutions[index];
+    //     if sym_res.line != location.line do break;
 
-        if sym_res.column <= location.column && location.column <= sym_res.column + sym_res.length {
-            sym_def := ^symbol_definitions[sym_res.symbol_id];
-            assert(sym_res.symbol_id == sym_def.symbol_id, "Expected symbol id's to match");
+    //     if sym_res.column <= location.column && location.column <= sym_res.column + sym_res.length {
+    //         sym_def := ^symbol_definitions[sym_res.symbol_id];
+    //         assert(sym_res.symbol_id == sym_def.symbol_id, "Expected symbol id's to match");
 
-            result_filename := files[sym_def.file_id].name;
+    //         result_filename := files[sym_def.file_id].name;
 
-            return Optional.make(SymbolLocation.{
-                result_filename,
-                sym_def.line,
-                sym_def.column
-            });
-        }
+    //         return SymbolLocation.{
+    //             result_filename,
+    //             sym_def.line,
+    //             sym_def.column
+    //         };
+    //     }
 
-        index += 1;
-    }
+    //     index += 1;
+    // }
 
     return .{};
 }
@@ -157,7 +182,7 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
     Symbol_Resolution :: struct {
         file_id: i32;
         line: i32;
-        column: u32;
+        column: i32;
         length: u32;
         symbol_id: u32;
     }
@@ -166,7 +191,19 @@ lookup_symbol :: (location: SymbolLocation) -> Optional(SymbolLocation) {
     Symbol_Resolution.compare :: (x, y: Symbol_Resolution) -> i32 {
         if x.file_id != y.file_id do return x.file_id - y.file_id;
         if x.line != y.line do return x.line - y.line;
-        return 0;
+        return x.column - y.column;
+    }
+
+    #inject
+    Symbol_Resolution.compare_loose :: (needle, haystack: Symbol_Resolution) -> i32 {
+        if needle.file_id != haystack.file_id do return needle.file_id - haystack.file_id;
+        if needle.line != haystack.line do return needle.line - haystack.line;
+
+        if needle.column >= haystack.column && needle.column < haystack.column + haystack.length {
+            return 0;
+        }
+
+        return needle.column - haystack.column;
     }
 
     symbol_info_contents: [] u8

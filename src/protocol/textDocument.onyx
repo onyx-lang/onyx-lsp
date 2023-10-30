@@ -15,6 +15,9 @@ OnyxFile :: struct {
 
 #local
 known_files: [..] OnyxFile;
+#init () {
+    array.init(&known_files, 16, context.allocator);
+}
 
 
 TextDocumentItem :: struct {
@@ -54,15 +57,9 @@ Diagnostic :: struct {
     message: str;
 }
 
-@Notification.{"textDocument/didChange"}
-(c: ^Context, item: ^TextDocumentItem) {
-    log(.Info, "Document changed, {}\n", item.textDocument.uri);
-    // update_diagnostics(c);
-}
-
 @Notification.{"textDocument/didSave"}
 (c: ^Context, item: ^TextDocumentItem) {
-    log(.Info, "Document changed, {}\n", item.textDocument.uri);
+    log(.Info, tprintf("Document changed, {}\n", item.textDocument.uri));
     update_diagnostics(c, item.textDocument.uri);
 }
 
@@ -139,9 +136,10 @@ TextDocumentLocation :: struct {
 (c: ^Context, in: ^TextDocumentPosition, out: ^TextDocumentLocation) -> Status {
     // Need to un-zero-index the line and column
     location := lookup_symbol(.{in.textDocument.uri, in.position.line + 1, in.position.character + 1});
+    log(.Debug, tprintf("{}", location));
 
     switch location {
-        case .Some => l {
+        case l: .Some {
             out.uri = tprintf("file://{}", l.filename);
             out.range.start = .{ l.line - 1, l.column - 1 };
             out.range.end   = .{ l.line - 1, l.column };
