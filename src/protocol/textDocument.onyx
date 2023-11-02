@@ -131,16 +131,17 @@ TextDocumentLocation :: struct {
     range: Range;
 }
 
-#inject
-TextDocumentPosition.to_symbol_location :: (self: &TextDocumentPosition) -> SymbolLocation {
-    return .{ self.textDocument.uri, self.position.line + 1, self.position.character + 1 };
+#inject TextDocumentPosition {
+    to_symbol_location :: (self: &TextDocumentPosition) -> SymbolLocation {
+        return .{ self.textDocument.uri, self.position.line + 1, self.position.character + 1 };
+    }
 }
 
 
 @Method.{"textDocument/definition"}
 (c: ^Context, in: ^TextDocumentPosition, out: ^TextDocumentLocation) -> Status {
     // Need to un-zero-index the line and column
-    location := lookup_symbol(in->to_symbol_location());
+    location := lookup_symbol(in->to_symbol_location())->transform(get_symbol_location);
 
     switch location {
         case l: .Some {
@@ -187,3 +188,46 @@ ReferencesInput :: struct {
     return .Success;
 }
 
+
+HoverOutput :: struct {
+    contents: struct {
+        kind: str;
+        value: str;
+    };
+}
+
+process_docs :: (docs: str) -> str {
+    lines := string.split_iter(docs, "\n")
+             |> iter.skip_while(x => string.empty(string.strip_whitespace(x)))
+             |> iter.collect();
+    
+    leading_whitespace_length := lines[0].count - string.strip_whitespace(lines[0]).count;
+    for& l: lines {
+        string.advance(l, leading_whitespace_length);
+    }
+
+    return string.join(lines, "\n");
+}
+
+@Method.{"textDocument/hover"}
+(c: &Context, in: &TextDocumentPosition, out: &HoverOutput) -> Status {
+    // Need to un-zero-index the line and column
+    location := lookup_symbol(in->to_symbol_location())
+                ->and_then(get_symbol_docs)
+                ->transform(process_docs);
+
+    switch location {
+        case docs: .Some {
+            *out = .{
+                contents = .{
+                    kind = "markdown",
+                    value = docs
+                }
+            };
+
+            return .Success;
+        }
+
+        case .None do return .Return_Null;
+    }
+}

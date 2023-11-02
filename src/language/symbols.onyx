@@ -13,7 +13,7 @@ refresh_symbol_registry :: (filename: str) {
     
     // Look at the header to make sure the magic bytes are correct.
     header := cast(^Symbol_Info_Header, symbol_info_contents.data);
-    if header.magic_bytes != "OSYM\x01\x00\x00\x00" {
+    if header.magic_bytes != "OSYM\x02\x00\x00\x00" {
         log(.Warning, "Bad magic bytes in OSYM file.");
         return;
     }
@@ -44,6 +44,9 @@ refresh_symbol_registry :: (filename: str) {
 
     symbol_resolutions.data = ~~ ^symbol_info_contents[header.symbol_res_offset];
     symbol_resolutions.count = header.symbol_res_count;
+
+    symbol_docs.data = ~~ &symbol_info_contents[header.docs_offset];
+    symbol_docs.count = header.docs_length;
 }
 
 
@@ -53,7 +56,7 @@ SymbolLocation :: struct {
     line, column: u32;
 }
 
-lookup_symbol :: (location: SymbolLocation) -> ? SymbolLocation {
+lookup_symbol :: (location: SymbolLocation) -> ? Symbol_Definition {
     log(.Debug, tprintf("Looking up: {}\n", location));
 
     // :NotURI
@@ -102,16 +105,28 @@ lookup_symbol :: (location: SymbolLocation) -> ? SymbolLocation {
         sym_def := ^symbol_definitions[sym_res.symbol_id];
         assert(sym_res.symbol_id == sym_def.symbol_id, "Expected symbol id's to match");
 
-        result_filename := files[sym_def.file_id].name;
-
-        return SymbolLocation.{
-            result_filename,
-            sym_def.line,
-            sym_def.column
-        };
+        return *sym_def;
     }
 
     return .{};
+}
+
+get_symbol_location :: (sym_def: Symbol_Definition) -> SymbolLocation {
+    result_filename := files[sym_def.file_id].name;
+
+    return SymbolLocation.{
+        result_filename,
+        sym_def.line,
+        sym_def.column
+    };
+}
+
+get_symbol_docs :: (sym_def: Symbol_Definition) -> ? str {
+    if sym_def.docs_length == 0 do return .{};
+
+    start := sym_def.docs_offset;
+    end   := start + sym_def.docs_length;
+    return symbol_docs[start .. end];
 }
 
 find_references :: (location: SymbolLocation, include_declaration := false) -> [] SymbolLocation {
@@ -166,6 +181,9 @@ find_references :: (location: SymbolLocation, include_declaration := false) -> [
 
         symbol_res_offset: u32;
         symbol_res_count:  u32;
+
+        docs_offset: u32;
+        docs_length: u32;
     }
 
     File_Definition :: struct {
@@ -178,6 +196,9 @@ find_references :: (location: SymbolLocation, include_declaration := false) -> [
         file_id: i32;
         line: i32;
         column: u32;
+
+        docs_offset: u32;
+        docs_length: u32;
     }
 
     Symbol_Resolution :: struct {
@@ -212,6 +233,7 @@ find_references :: (location: SymbolLocation, include_declaration := false) -> [
     files: [] File_Definition
     symbol_definitions: [] Symbol_Definition
     symbol_resolutions: [] Symbol_Resolution
+    symbol_docs:        [] u8
 }
 
 

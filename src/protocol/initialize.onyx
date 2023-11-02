@@ -45,6 +45,8 @@ ServerCapabilities :: struct {
     referencesProvider: bool;
 
     definitionProvider: bool;
+
+    hoverProvider: bool;
 }
 
 @Method.{"initialize"}
@@ -64,7 +66,8 @@ ServerCapabilities :: struct {
             save = true
         },
         definitionProvider = true,
-        referencesProvider = true
+        referencesProvider = true,
+        hoverProvider = true
     };
 
     out.serverInfo = .{
