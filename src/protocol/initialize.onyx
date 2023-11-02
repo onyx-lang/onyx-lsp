@@ -42,6 +42,8 @@ ServerCapabilities :: struct {
         save: bool;
     };
 
+    referencesProvider: bool;
+
     definitionProvider: bool;
 }
 
@@ -61,7 +63,8 @@ ServerCapabilities :: struct {
             change = 0,
             save = true
         },
-        definitionProvider = true
+        definitionProvider = true,
+        referencesProvider = true
     };
 
     out.serverInfo = .{

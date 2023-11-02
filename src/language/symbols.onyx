@@ -1,5 +1,5 @@
 
-use core {os, array, string}
+use core {os, array, string, iter}
 use core {eprintf, tprintf}
 
 refresh_symbol_registry :: (filename: str) {
@@ -60,8 +60,6 @@ lookup_symbol :: (location: SymbolLocation) -> ? SymbolLocation {
     file_def := array.first(files, [](string.contains(location.filename, it.name)));
     if !file_def do return .{};
 
-    log(.Debug, tprintf("In file: {*}\n", file_def));
-
     file_id := file_def.id;
     tmp_symbol_resolution := Symbol_Resolution.{file_id, location.line, location.column};
 
@@ -73,9 +71,6 @@ lookup_symbol :: (location: SymbolLocation) -> ? SymbolLocation {
     found := false;
     while top >= bottom {
         index = (top - bottom) / 2 + bottom;
-
-        use core
-        logf(.Debug, "Index: {}\nSymres: {}", index, symbol_resolutions[index]);
 
         comp := Symbol_Resolution.compare_loose(
             tmp_symbol_resolution,
@@ -97,12 +92,11 @@ lookup_symbol :: (location: SymbolLocation) -> ? SymbolLocation {
     }
 
     if !found {
-        log(.Debug, "Not found");
+        log(.Info, "Symbol not found");
         return .{};
     }
 
     sym_res := &symbol_resolutions[index];
-    log(.Debug, tprintf("Symres: {*}\n", sym_res));
     if sym_res.line != location.line do return .{};
     if sym_res.column <= location.column && location.column <= sym_res.column + sym_res.length {
         sym_def := ^symbol_definitions[sym_res.symbol_id];
@@ -117,39 +111,46 @@ lookup_symbol :: (location: SymbolLocation) -> ? SymbolLocation {
         };
     }
 
-
-    //
-    // As an optimization, not all symbol resolutions are sorted completely.
-    // Instead, any resolution that is on the same line of the same file is
-    // considered equal. Because of this, we have to search for the beginning
-    // this sequence of "equal" items and then loop though them individually.
-    // 
-    // while index > 0 &&
-    //     Symbol_Resolution.compare(tmp_symbol_resolution, symbol_resolutions[index - 1]) == 0 {
-    //     index -= 1;
-    // }
-
-    // while index < symbol_resolutions.length {
-    //     sym_res := ^symbol_resolutions[index];
-    //     if sym_res.line != location.line do break;
-
-    //     if sym_res.column <= location.column && location.column <= sym_res.column + sym_res.length {
-    //         sym_def := ^symbol_definitions[sym_res.symbol_id];
-    //         assert(sym_res.symbol_id == sym_def.symbol_id, "Expected symbol id's to match");
-
-    //         result_filename := files[sym_def.file_id].name;
-
-    //         return SymbolLocation.{
-    //             result_filename,
-    //             sym_def.line,
-    //             sym_def.column
-    //         };
-    //     }
-
-    //     index += 1;
-    // }
-
     return .{};
+}
+
+find_references :: (location: SymbolLocation, include_declaration := false) -> [] SymbolLocation {
+    file_def := array.first(files, [](string.contains(location.filename, it.name)));
+    if !file_def do return .[];
+
+    possible_symbols := iter.as_iter(symbol_definitions)
+        |> iter.filter((def, [file_def, location]) =>
+            def.file_id == file_def.id &&
+            def.line == location.line &&
+            def.column < location.column
+        )
+        |> iter.collect()
+        |> array.sort((x, y) => y.column - x.column);
+
+    if !possible_symbols do return .[];
+
+    sym    := possible_symbols[0];
+    sym_id := sym.symbol_id;
+    results := iter.as_iter(symbol_resolutions)
+        |> iter.filter((res, [sym_id]) => res.symbol_id == sym_id)
+        |> iter.map(res => SymbolLocation.{
+            files[res.file_id].name,
+            res.line,
+            res.column
+        });
+    
+    if include_declaration {
+        results = iter.concat(
+            iter.single(SymbolLocation.{
+                files[sym.file_id].name,
+                sym.line,
+                sym.column
+            }),
+            results
+        );
+    }
+
+    return results->collect();
 }
 
 

@@ -10,6 +10,8 @@ comm_reader: io.Reader;
 comm_writer: io.Writer;
 json_rpc_handler: json_rpc.Context;
 
+lsp_logger: LspLogger;
+
 setup_jsonrpc :: () {
     use main { MAIN_PKG :: package }
 
@@ -45,12 +47,12 @@ process_incoming_message :: () {
 
     if length == 0 do return;
 
-    log(.Debug, tprintf("Message is {} bytes.", length));
+    // log(.Debug, tprintf("Message is {} bytes.", length));
     message := make([] u8, length);
     defer delete(^message);
 
     err := comm_reader->read_fill_buffer(message);
-    log(.Debug, tprintf("{}", err));
+    // log(.Debug, tprintf("{}", err));
     assert(err == .None, "Failed to fill buffer, client was dumb. Dying now.");
 
     log(.Debug, message);
@@ -70,7 +72,7 @@ process_incoming_message :: () {
 listen_loop :: () {
     while !comm_reader.done {
         alloc.clear_temp_allocator();
-        log(.Debug, "Waiting for message...");
+        log(.Debug, "=======================================\n    ... Waiting for next message...\n=======================================");
 
         //
         // For some reason, there is a non-zero chance that we enter an infinite
@@ -100,20 +102,6 @@ listen_loop :: () {
 }
 
 main :: (args) => {
-
-    #if !#defined(runtime.vars.Debug) {
-        default_log_level(.Debug);
-        file_logger := os.file_logger_open("/tmp/onyx_lsp_log")->unwrap();
-        os.file_logger_use(file_logger);
-        defer os.file_logger_close(file_logger);
-
-        // old_allocator := context.allocator;
-        // context.allocator = alloc.log.logging_allocator(&old_allocator);
-
-    } else {
-        default_log_level(.Critical);
-    }
-
     random.set_seed(os.time());
 
     if args.count > 0 && string.starts_with(args[0] |> string.as_str(), "init") {
@@ -163,8 +151,11 @@ main :: (args) => {
         comm_writer = stdio.print_writer;
     }
 
+    lsp_logger = make_lsp_logger(&json_rpc_handler);
+    context.logger = lsp_logger->as_logger();
+    // default_log_level(.Debug);
+
     json_rpc_handler->set_output_callback(^comm_writer, (w: ^io.Writer, msg: str) => {
-        log(.Debug, msg);
         io.write_format(w, "Content-Length: {}\r\n", msg.length);
         io.write(w, "\r\n");
         io.write(w, msg);

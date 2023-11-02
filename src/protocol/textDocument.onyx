@@ -1,4 +1,4 @@
-use core {string, array}
+use core {string, array, iter}
 use core {tprintf, aprintf}
 use json_rpc {
     Method,
@@ -131,12 +131,16 @@ TextDocumentLocation :: struct {
     range: Range;
 }
 
+#inject
+TextDocumentPosition.to_symbol_location :: (self: &TextDocumentPosition) -> SymbolLocation {
+    return .{ self.textDocument.uri, self.position.line + 1, self.position.character + 1 };
+}
+
 
 @Method.{"textDocument/definition"}
 (c: ^Context, in: ^TextDocumentPosition, out: ^TextDocumentLocation) -> Status {
     // Need to un-zero-index the line and column
-    location := lookup_symbol(.{in.textDocument.uri, in.position.line + 1, in.position.character + 1});
-    log(.Debug, tprintf("{}", location));
+    location := lookup_symbol(in->to_symbol_location());
 
     switch location {
         case l: .Some {
@@ -149,5 +153,37 @@ TextDocumentLocation :: struct {
 
         case .None do return .Return_Null;
     }
+}
+
+
+ReferencesInput :: struct {
+    textDocument: struct {
+        uri: str;
+    };
+
+    position: Position;
+    context: struct {
+        includeDeclaration: bool;
+    };
+}
+
+@Method.{"textDocument/references"}
+(c: &Context, in: &ReferencesInput, out: &[] TextDocumentLocation) -> Status {
+    locations := find_references(
+        TextDocumentPosition.to_symbol_location(~~in),
+        in.context.includeDeclaration
+    );
+
+    *out = iter.as_iter(locations)
+        |> iter.map(loc => TextDocumentLocation.{
+            uri = tprintf("file://{}", loc.filename),
+            range = .{
+                start = .{ loc.line - 1, loc.column - 1 },
+                end = .{ loc.line - 1, loc.column },
+            }
+        })
+        |> iter.collect();
+
+    return .Success;
 }
 
