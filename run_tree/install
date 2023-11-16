@@ -8,8 +8,8 @@ popd
 
 onyx build ../build -o onyx-lsp.wasm -V
 
-sudo cp ./onyx-lsp /usr/bin/onyx-lsp
+cp ./onyx-lsp $ONYX_PATH/onyx-lsp
 
-sudo mkdir -p /usr/share/onyx/tools
-sudo cp ./onyx-lsp.wasm /usr/share/onyx/tools/onyx-lsp.wasm
+mkdir -p $ONYX_PATH/tools
+cp ./onyx-lsp.wasm $ONYX_PATH/tools/lsp.wasm
 

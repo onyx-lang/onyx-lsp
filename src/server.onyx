@@ -47,12 +47,10 @@ process_incoming_message :: () {
 
     if length == 0 do return;
 
-    // log(.Debug, tprintf("Message is {} bytes.", length));
     message := make([] u8, length);
     defer delete(^message);
 
     err := comm_reader->read_fill_buffer(message);
-    // log(.Debug, tprintf("{}", err));
     assert(err == .None, "Failed to fill buffer, client was dumb. Dying now.");
 
     log(.Debug, message);
@@ -61,12 +59,7 @@ process_incoming_message :: () {
         return;
     }
 
-    {
-        // old_allocator := context.allocator;
-        // context.allocator = alloc.log.logging_allocator(&old_allocator);
-
-        json_rpc_handler->handle(message);
-    }
+    json_rpc_handler->handle(message);
 }
 
 listen_loop :: () {
@@ -153,7 +146,6 @@ main :: (args) => {
 
     lsp_logger = make_lsp_logger(&json_rpc_handler);
     context.logger = lsp_logger->as_logger();
-    // default_log_level(.Debug);
 
     json_rpc_handler->set_output_callback(^comm_writer, (w: ^io.Writer, msg: str) => {
         io.write_format(w, "Content-Length: {}\r\n", msg.length);
