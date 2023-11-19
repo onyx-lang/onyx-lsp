@@ -1,4 +1,3 @@
-#load "core/std"
 #load "core/encoding/ini"
 
 use runtime
