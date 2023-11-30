@@ -11,7 +11,7 @@ CompilationError :: struct {
 }
 
 run_onyx_check :: (filename: str) -> [] CompilationError {
-    temporary_file_name := tprintf("/tmp/onyx_lsp_{}", random.between(0, 5000));
+    temporary_file_name := tprintf(".onyx_lsp_output_{}", random.between(0, 5000));
     defer if os.file_exists(temporary_file_name) {
         os.remove_file(temporary_file_name);
     }
