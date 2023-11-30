@@ -3,8 +3,8 @@
 set -o pipefail
 
 onyx package sync
-onyx build build.onyx -o onyx-lsp.wasm -V
+onyx package build
 
 mkdir -p $ONYX_PATH/tools
-cp ./onyx-lsp.wasm $ONYX_PATH/tools/lsp.wasm
+cp ./lsp.wasm $ONYX_PATH/tools/lsp.wasm
 

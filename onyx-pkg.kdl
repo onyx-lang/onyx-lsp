@@ -15,6 +15,14 @@ dependencies {
     json-rpc "0.0.30" git="http://github.com/onyx-lang/pkg-json-rpc" 
 }
 
+build {
+    default {
+        source "build.onyx" 
+        target "lsp.wasm" 
+        args "-V" 
+    }
+}
+
 lsp {
     mode "project" 
     working_dir "." 
