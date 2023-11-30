@@ -98,8 +98,49 @@ main :: (args) => {
     random.set_seed(os.time());
 
     if args.count > 0 && string.starts_with(args[0] |> string.as_str(), "init") {
-        for os.with_file("./onyx-lsp.ini", .Write) {
-            io.stream_write(it, Onyx_Lsp_Template_File);
+        //
+        // This is how the old LSP config was created.
+        // The new way uses the package file itself.
+        //
+        // for os.with_file("./onyx-lsp.ini", .Write) {
+        //     io.stream_write(it, Onyx_Lsp_Template_File);
+        // }
+
+        use core.encoding.kdl
+        use core.array
+
+        PACKAGE_FILE_NAME :: "./onyx-pkg.kdl"
+
+        doc := kdl.parse(os.get_contents(PACKAGE_FILE_NAME))->expect("Failed to parse onyx-pkg.kdl.");
+        if !doc->query("top() > lsp") {
+            lsp_node := doc->create_node("lsp");
+            working_dir_node  := doc->create_node("working_dir");
+            include_dirs_node := doc->create_node("include_dirs");
+            source_files_node := doc->create_node("source_files");
+            mode_node         := doc->create_node("mode");
+
+            mode_node->add_value(.{ String = "project" });
+            source_files_node->add_value(.{ String = "REPLACE WITH SOURCE FILES" });
+            include_dirs_node->add_value(.{ String = "" });
+            working_dir_node->add_value(.{ String = "." });
+
+            array.concat(&lsp_node.children, .[
+                mode_node, source_files_node, include_dirs_node, working_dir_node
+            ]);
+
+            doc.nodes << lsp_node;
+
+            for os.with_file(PACKAGE_FILE_NAME, .Write) {
+                w := io.writer_make(it);
+                defer io.writer_free(&w);
+
+                kdl.write(&doc, &w);
+            }
+
+            printf("'lsp' section added to onyx-pkg.kdl. You need to populate the fields for the langauge server to work.\n");
+
+        } else {
+            printf("onyx-pkg.kdl already contains a defintion for 'lsp'.\n");
         }
 
         return;
@@ -120,7 +161,7 @@ main :: (args) => {
         listen_socket->option(.ReuseAddress, true);
 
         listen_addr: net.SocketAddress;
-        net.make_ipv4_address(&listen_addr, 0, ~~ port);
+        net.make_ipv4_address(&listen_addr, "0.0.0.0", ~~ port);
         listen_socket->bind(&listen_addr);
 
         log(.Info, tprintf("Listening on port {}", port));

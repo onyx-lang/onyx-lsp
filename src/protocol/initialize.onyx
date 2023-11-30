@@ -54,8 +54,10 @@ ServerCapabilities :: struct {
     log(.Info, core.tprintf("Client has capabilties: {*p}", ^in.capabilities));
     log(.Info, core.tprintf("Client is in folder: {}", in.rootPath));
 
-    if !load_config(in.rootPath) {
-        eprintf("Failed to open config file 'onyx-lsp.ini', using defaults.\n");
+    if !load_config_new(in.rootPath) {
+        if !load_config(in.rootPath) {
+            eprintf("Failed find 'lsp' section in 'onyx-pkg.kdl'. Also failed to open config file 'onyx-lsp.ini'. Using the defaults.\n");
+        }
     }
 
     out.capabilities = .{

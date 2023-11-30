@@ -1,0 +1,23 @@
+package {
+    name "onyx-lsp" 
+    author "Brendan Hansen" 
+    url "git://onyxlang.io/repo/onyx-lsp" 
+    description "Onyx's Language Server Protocol" 
+    version "0.0.1" 
+}
+
+config {
+    dependency_source_path "./lib" 
+    dependency_binary_path "./bin" 
+}
+
+dependencies {
+    json-rpc "0.0.30" git="http://github.com/onyx-lang/pkg-json-rpc" 
+}
+
+lsp {
+    mode "project" 
+    working_dir "." 
+    source_files "build.onyx" 
+}
+

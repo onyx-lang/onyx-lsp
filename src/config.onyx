@@ -3,6 +3,7 @@ use core {tprintf}
 use core {io, encoding, os}
 
 LSP_CONFIG_FILE_NAME :: "onyx-lsp.ini"
+LSP_CONFIG_NEW_FILE_NAME :: "onyx-pkg.kdl"
 
 LSPConfigContainer :: struct {
     lsp := LSPConfig.{};
@@ -36,5 +37,26 @@ load_config :: (folder: str) -> bool {
     }
 
     return success;
+}
+
+load_config_new :: (folder: str) -> bool {
+    global_config = LSPConfigContainer.{};
+
+    full_path := os.path_join(folder, LSP_CONFIG_NEW_FILE_NAME);
+    for os.with_file(full_path) {
+        r := io.reader_make(it);
+        defer io.reader_free(&r);
+
+        document := encoding.kdl.parse(&r)->or_return(false);
+        document->query("top() > lsp")->with([lsp_node] {
+            global_config.lsp.workingDir = lsp_node->query("working_dir")->and_then(x => x->value_or_null()->as_str()) ?? "";
+            global_config.lsp.includeDirs = lsp_node->query("include_dirs")->and_then(x => x->value_or_null()->as_str()) ?? "";
+            global_config.lsp.onyxFiles = lsp_node->query("source_files")->and_then(x => x->value_or_null()->as_str()) ?? "";
+            global_config.lsp.mode = lsp_node->query("mode")->and_then(x => x->value_or_null()->as_str()) ?? "file";
+            return true;
+        });
+    }
+
+    return false;
 }
 
