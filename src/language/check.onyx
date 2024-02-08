@@ -21,6 +21,10 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
     args := array.make(.["check", "--no-colors", "--no-stale-code", "--lspinfo", temporary_file_name]);
     defer delete(^args);
 
+    for global_config.lsp.args {
+        args << it;
+    }
+
     for string.split_iter(global_config.lsp.includeDirs, #char " ") {
         args << "-I";
         args << it;

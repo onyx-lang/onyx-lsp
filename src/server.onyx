@@ -160,16 +160,13 @@ main :: (args) => {
 
         listen_socket->option(.ReuseAddress, true);
 
-        listen_addr: net.SocketAddress;
-        net.make_ipv4_address(&listen_addr, "0.0.0.0", ~~ port);
+        listen_addr := net.make_ipv4_address("0.0.0.0", ~~ port);
         listen_socket->bind(&listen_addr);
 
         log(.Info, tprintf("Listening on port {}", port));
         listen_socket->listen();
 
         comm_socket = listen_socket->accept()->unwrap().socket;
-        defer comm_socket->close();
-
         comm_socket->option(.NonBlocking, true);
 
         comm_reader = io.reader_make(^comm_socket);
@@ -196,6 +193,10 @@ main :: (args) => {
     });
 
     listen_loop();
+
+    if port > 0 {
+        comm_socket->close();
+    }
 }
 
 Onyx_Lsp_Template_File :: """[lsp]

@@ -80,7 +80,7 @@ update_diagnostics :: (c: ^Context, uri: str) {
         array.clear(^it.errors);
     }
 
-    for err: errors {
+    for err in errors {
         in_file := array.first(known_files, [f](string.contains(f.uri, err.file)));
         if !in_file {
             known_files << .{ aprintf("file://{}", err.file) };
@@ -103,7 +103,7 @@ update_diagnostics :: (c: ^Context, uri: str) {
         diagnostics := make([..] Diagnostic);
         defer delete(^diagnostics);
 
-        for^ err: it.errors {
+        for &err in it.errors {
             diagnostics << .{
                 .{
                     .{ line = err.line - 1, character = err.start_column - 1 },
@@ -139,12 +139,12 @@ TextDocumentLocation :: struct {
 
 
 @Method.{"textDocument/definition"}
-(c: ^Context, in: ^TextDocumentPosition, out: ^TextDocumentLocation) -> Status {
+(c: ^Context, input: ^TextDocumentPosition, out: ^TextDocumentLocation) -> Status {
     // Need to un-zero-index the line and column
-    location := lookup_symbol(in->to_symbol_location())->transform(get_symbol_location);
+    location := lookup_symbol(input->to_symbol_location())->transform(get_symbol_location);
 
     switch location {
-        case l: .Some {
+        case .Some as l {
             out.uri = tprintf("file://{}", l.filename);
             out.range.start = .{ l.line - 1, l.column - 1 };
             out.range.end   = .{ l.line - 1, l.column };
@@ -169,10 +169,10 @@ ReferencesInput :: struct {
 }
 
 @Method.{"textDocument/references"}
-(c: &Context, in: &ReferencesInput, out: &[] TextDocumentLocation) -> Status {
+(c: &Context, input: &ReferencesInput, out: &[] TextDocumentLocation) -> Status {
     locations := find_references(
-        TextDocumentPosition.to_symbol_location(~~in),
-        in.context.includeDeclaration
+        TextDocumentPosition.to_symbol_location(~~input),
+        input.context.includeDeclaration
     );
 
     *out = iter.as_iter(locations)
@@ -202,7 +202,7 @@ process_docs :: (docs: str) -> str {
              |> iter.collect();
     
     leading_whitespace_length := lines[0].count - string.strip_whitespace(lines[0]).count;
-    for& l: lines {
+    for &l in lines {
         string.advance(l, leading_whitespace_length);
     }
 
@@ -210,14 +210,14 @@ process_docs :: (docs: str) -> str {
 }
 
 @Method.{"textDocument/hover"}
-(c: &Context, in: &TextDocumentPosition, out: &HoverOutput) -> Status {
+(c: &Context, input: &TextDocumentPosition, out: &HoverOutput) -> Status {
     // Need to un-zero-index the line and column
-    location := lookup_symbol(in->to_symbol_location())
+    location := lookup_symbol(input->to_symbol_location())
                 ->and_then(get_symbol_docs)
                 ->transform(process_docs);
 
     switch location {
-        case docs: .Some {
+        case .Some as docs {
             *out = .{
                 contents = .{
                     kind = "markdown",

@@ -50,12 +50,12 @@ ServerCapabilities :: struct {
 }
 
 @Method.{"initialize"}
-(c: ^Context, in: ^InitializeRequest, out: ^InitializeResult) -> Status {
-    log(.Info, core.tprintf("Client has capabilties: {*p}", ^in.capabilities));
-    log(.Info, core.tprintf("Client is in folder: {}", in.rootPath));
+(c: ^Context, input: ^InitializeRequest, out: ^InitializeResult) -> Status {
+    log(.Info, core.tprintf("Client has capabilties: {*p}", ^input.capabilities));
+    log(.Info, core.tprintf("Client is in folder: {}", input.rootPath));
 
-    if !load_config_new(in.rootPath) {
-        if !load_config(in.rootPath) {
+    if !load_config_new(input.rootPath) {
+        if !load_config(input.rootPath) {
             eprintf("Failed find 'lsp' section in 'onyx-pkg.kdl'. Also failed to open config file 'onyx-lsp.ini'. Using the defaults.\n");
         }
     }
