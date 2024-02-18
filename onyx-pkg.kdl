@@ -12,7 +12,7 @@ config {
 }
 
 dependencies {
-    json-rpc "0.0.30" git="http://github.com/onyx-lang/pkg-json-rpc" 
+    json-rpc "0.0.31" git="http://github.com/onyx-lang/pkg-json-rpc" 
 }
 
 build {
