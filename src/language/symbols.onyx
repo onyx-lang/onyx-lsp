@@ -1,6 +1,7 @@
 
 use core {os, array, string, iter}
 use core {eprintf, tprintf}
+use runtime
 
 refresh_symbol_registry :: (filename: str) {
     // First, flush all old memory that is not needed any more.
@@ -28,6 +29,12 @@ refresh_symbol_registry :: (filename: str) {
         id          := *cast(^u32, ^symbol_info_contents.data[index]);
         name_length := *cast(^u32, ^symbol_info_contents.data[index + 4]);
         name        := symbol_info_contents.data[index + 8 .. index + 8 + name_length];
+
+        #if runtime.compiler_os == .Windows {
+            for &n in name {
+                if *n == '\\' do *n = '/';
+            }
+        }
 
         files[it] = .{id, name};
 
@@ -60,8 +67,8 @@ lookup_symbol :: (location: SymbolLocation) -> ? Symbol_Definition {
     log(.Debug, tprintf("Looking up: {}\n", location));
 
     // :NotURI
-    file_def := array.first(files, [](string.contains(location.filename, it.name)));
-    if !file_def do return .{};
+    file_def := array.first(files, [](string.equal_insensitive(location.filename, it.name)));
+    if !file_def do return .None;
 
     file_id := file_def.id;
     tmp_symbol_resolution := Symbol_Resolution.{file_id, location.line, location.column};

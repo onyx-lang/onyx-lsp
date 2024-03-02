@@ -26,7 +26,6 @@ build {
 lsp {
     mode "project" 
     working_dir "." 
-    args "--feature" "optional-semicolons" 
     source_files "build.onyx" 
 }
 

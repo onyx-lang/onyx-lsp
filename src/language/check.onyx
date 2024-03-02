@@ -61,7 +61,7 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
 
         if string.starts_with(line, "(") {
             string.advance(^line, 1);
-            filename := string.temp_copy(string.read_until(^line, #char ":"));
+            filename := string.temp_copy(string.read_until_rev(^line, #char ":"));
 
             string.advance(^line, 1);
             line_number := conv.parse_int(^line);
@@ -84,5 +84,19 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
     }
 
     return errors;
+}
+
+#inject
+string.read_until_rev :: (s: &str, c: u8) -> str {
+    out := *s;
+
+    while out[out.count - 1] != c && out.count > 0 {
+        out.count -= 1;
+    }
+
+    out.count -= 1;
+
+    string.advance(s, out.count);
+    return out;
 }
 
