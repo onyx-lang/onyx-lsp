@@ -60,9 +60,7 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
         return errors;
     }
 
-    while output {
-        line, output~ := string.bisect(output, #char "\n");
-
+    for line in string.split_iter(output, "\n") {
         if string.starts_with(line, "(") {
             string.advance(^line, 1);
             filename := string.temp_copy(string.read_until(^line, #char ":"));
