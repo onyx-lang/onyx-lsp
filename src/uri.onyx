@@ -1,0 +1,131 @@
+package main
+
+use core {string, iter, conv}
+
+uri_decode :: (uri: str) -> str {
+    a := urldecode(uri);
+    
+    if string.starts_with(a, "file://") {
+        string.advance(&a, "file://".count);
+    }
+
+    if a[0] == '/' && a[2] == ':' {
+        string.advance(&a, 1);
+    }
+
+    return a;
+}
+
+uri_encode :: (s: str, allocator := context.allocator) -> str {
+    result := make(dyn_str, allocator);
+    string.append(&result, "file://");
+
+    if s[1] == ':' {
+        string.append(&result, "/");
+    }
+
+    string.append(&result, urlencode(s, allocator));
+    return result;
+}
+
+
+//
+// Yoinked from onyx-lang/pkg-http-server
+//
+urlencode :: (s: str, allocator := context.allocator) -> str {
+    out := make([..] u8, s.count, allocator=allocator);
+
+    for ch in s do switch ch {
+        //
+        // This list was taken from:
+        // https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding
+        match(#char ":", "%3A");
+        match(#char "/", "%2F");
+        match(#char "?", "%3F");
+        match(#char "#", "%23");
+        match(#char "[", "%5B");
+        match(#char "]", "%5D");
+        match(#char "@", "%40");
+        match(#char "!", "%21");
+        match(#char "$", "%24");
+        match(#char "&", "%26");
+        match(#char "'", "%27");
+        match(#char "(", "%28");
+        match(#char ")", "%29");
+        match(#char "*", "%2A");
+        match(#char "+", "%2B");
+        match(#char ",", "%2C");
+        match(#char ";", "%3B");
+        match(#char "<", "%3C");
+        match(#char "=", "%3D");
+        match(#char ">", "%3E");
+        match(#char "%", "%25");
+        match(#char " ", "%20");
+        match(#char "\"", "%22");
+
+        case #default do out << ch;
+
+        match :: macro (from: u8, to: str) {
+            //
+            // How's this for a one-liner
+            case from do for to do out << it;
+        }
+    }
+
+    return out;
+}
+
+urldecode :: (s: str, allocator := context.allocator) -> str {
+    out := make([..] u8, s.count, allocator=allocator);
+
+    i := iter.as_iter(s);
+    defer iter.close(i);
+
+    for #no_close ch in i {
+        if ch == #char "%" {
+            a, e  := iter.take_one(i, no_close=true);
+            b, e~ := iter.take_one(i, no_close=true);
+
+            n := u8.[a, b];
+
+            v := conv.str_to_i64(n, base=16);
+            switch v {
+                match(0x3A, #char ":");
+                match(0x2F, #char "/");
+                match(0x3F, #char "?");
+                match(0x23, #char "#");
+                match(0x5B, #char "[");
+                match(0x5D, #char "]");
+                match(0x40, #char "@");
+                match(0x21, #char "!");
+                match(0x24, #char "$");
+                match(0x26, #char "&");
+                match(0x27, #char "'");
+                match(0x28, #char "(");
+                match(0x29, #char ")");
+                match(0x2A, #char "*");
+                match(0x2B, #char "+");
+                match(0x2C, #char ",");
+                match(0x3B, #char ";");
+                match(0x3C, #char "<");
+                match(0x3D, #char "=");
+                match(0x3E, #char ">");
+                match(0x25, #char "%");
+                match(0x20, #char " ");
+                match(0x22, #char "\"");
+
+                match :: macro (from: i64, to: u8) {
+                    case from do out << to;
+                }
+            }
+
+        } elseif ch == #char "+" {
+            out << #char " ";
+        } else {
+            out << ch;
+        }
+    }
+
+    return out;
+}
+

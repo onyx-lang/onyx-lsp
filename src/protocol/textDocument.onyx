@@ -33,7 +33,7 @@ TextDocumentItem :: struct {
     if item.textDocument.languageId != "onyx" do return;
 
     if !array.contains(known_files, [](it.uri == item.textDocument.uri)) {
-        known_files << .{ string.alloc_copy(item.textDocument.uri) };
+        known_files << .{ string.to_lowercase(string.alloc_copy(item.textDocument.uri)) };
     }
 }
 
@@ -59,17 +59,14 @@ Diagnostic :: struct {
 
 @Notification.{"textDocument/didSave"}
 (c: ^Context, item: ^TextDocumentItem) {
-    log(.Info, tprintf("Document changed, {}\n", item.textDocument.uri));
-    update_diagnostics(c, item.textDocument.uri);
+    filepath := uri_decode(item.textDocument.uri);
+
+    log(.Info, tprintf("Document changed, {}\n", filepath));
+    update_diagnostics(c, filepath);
 }
 
-update_diagnostics :: (c: ^Context, uri: str) {
-    filename := do {
-        if string.starts_with(uri, "file://") do return string.advance(uri, 7);
-        return "";
-    };
-
-    errors := run_onyx_check(filename);
+update_diagnostics :: (c: ^Context, filepath: str) {
+    errors := run_onyx_check(filepath);
     defer delete(^errors);
 
     for ^known_files {
@@ -81,10 +78,12 @@ update_diagnostics :: (c: ^Context, uri: str) {
     }
 
     for err in errors {
-        in_file := array.first(known_files, [f](string.contains(f.uri, err.file)));
+        file_uri := string.to_lowercase(uri_encode(err.file, context.temp_allocator));
+
+        in_file := array.first(known_files, [f](f.uri == file_uri));
         if !in_file {
-            known_files << .{ aprintf("file://{}", err.file) };
-            in_file = array.first(known_files, [f](string.contains(f.uri, err.file)));
+            known_files << .{ file_uri };
+            in_file = array.first(known_files, [f](f.uri == file_uri));
         }
 
         in_file.errors << err;
@@ -133,7 +132,7 @@ TextDocumentLocation :: struct {
 
 #inject TextDocumentPosition {
     to_symbol_location :: (self: &TextDocumentPosition) -> SymbolLocation {
-        return .{ self.textDocument.uri, self.position.line + 1, self.position.character + 1 };
+        return .{ uri_decode(self.textDocument.uri), self.position.line + 1, self.position.character + 1 };
     }
 }
 
@@ -145,7 +144,7 @@ TextDocumentLocation :: struct {
 
     switch location {
         case .Some as l {
-            out.uri = tprintf("file://{}", l.filename);
+            out.uri = uri_encode(l.filename);
             out.range.start = .{ l.line - 1, l.column - 1 };
             out.range.end   = .{ l.line - 1, l.column };
 
@@ -177,7 +176,7 @@ ReferencesInput :: struct {
 
     *out = iter.as_iter(locations)
         |> iter.map(loc => TextDocumentLocation.{
-            uri = tprintf("file://{}", loc.filename),
+            uri = uri_encode(loc.filename),
             range = .{
                 start = .{ loc.line - 1, loc.column - 1 },
                 end = .{ loc.line - 1, loc.column },
@@ -201,7 +200,7 @@ process_docs :: (docs: str) -> str {
              |> iter.skip_while(x => string.empty(string.strip_whitespace(x)))
              |> iter.collect();
     
-    leading_whitespace_length := lines[0].count - string.strip_whitespace(lines[0]).count;
+    leading_whitespace_length := lines[0].count - string.strip_leading_whitespace(lines[0]).count;
     for &l in lines {
         string.advance(l, leading_whitespace_length);
     }
