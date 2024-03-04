@@ -41,7 +41,7 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
     }
 
     proc := os.process_spawn(
-        os.path_join(os.env("ONYX_PATH") ?? "", "bin", "onyx"),
+        "onyx",
         args,
         starting_directory=global_config.lsp.workingDir
     );
