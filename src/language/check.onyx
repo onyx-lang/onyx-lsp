@@ -18,7 +18,7 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
     }
 
     // :Config
-    args := array.make(.["check", "--no-colors", "--no-stale-code", "--lspinfo", temporary_file_name]);
+    args := array.make(.["check", "--no-colors", "--no-stale-code", "--lspinfo", temporary_file_name, "--error-format", "v1"]);
     defer delete(^args);
 
     for global_config.lsp.args {
