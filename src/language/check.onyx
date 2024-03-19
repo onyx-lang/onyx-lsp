@@ -11,6 +11,8 @@ CompilationError :: struct {
 }
 
 run_onyx_check :: (filename: str) -> [] CompilationError {
+    logf(.Debug, "Checking ({})", filename);
+
     temporary_file_name := tprintf(".onyx_lsp_output_{}", random.between(0, 5000));
     actual_file_name := os.path_join(global_config.lsp.workingDir, temporary_file_name);
     defer if os.file_exists(actual_file_name) {
@@ -18,7 +20,7 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
     }
 
     // :Config
-    args := array.make(.["check", "--no-colors", "--no-stale-code", "--lspinfo", temporary_file_name]);
+    args := array.make(.["check", "--no-colors", "--no-stale-code", "--lspinfo", temporary_file_name, "--error-format", "v1", "-r", global_config.lsp.runtime]);
     defer delete(^args);
 
     for global_config.lsp.args {

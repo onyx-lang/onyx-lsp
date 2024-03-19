@@ -1,6 +1,6 @@
 
 use core {tprintf}
-use core {io, encoding, os, iter}
+use core {io, encoding, os, iter, string}
 
 LSP_CONFIG_FILE_NAME :: "onyx-lsp.ini"
 LSP_CONFIG_NEW_FILE_NAME :: "onyx-pkg.kdl"
@@ -14,6 +14,7 @@ LSPConfig :: struct {
     includeDirs: str = "";
     onyxFiles:   str = "";
     mode:        str = "file";
+    runtime:     str = "onyx";
     args:        [] str;
 }
 
@@ -54,11 +55,13 @@ load_config_new :: (folder: str) -> bool {
             global_config.lsp.includeDirs = lsp_node->query("include_dirs")->and_then(x => x->value_or_null()->as_str()) ?? "";
             global_config.lsp.onyxFiles = lsp_node->query("source_files")->and_then(x => x->value_or_null()->as_str()) ?? "";
             global_config.lsp.mode = lsp_node->query("mode")->and_then(x => x->value_or_null()->as_str()) ?? "file";
+            global_config.lsp.runtime = lsp_node->query("runtime")->and_then(x => x->value_or_null()->as_str()) ?? "onyx";
 
             lsp_node->query("args")->with([args] {
                 global_config.lsp.args = args.values
                     |> iter.as_iter()
-                    |> iter.flatten(x => (*x)->as_str())
+                    |> iter.flatten(x => x.*->as_str())
+                    |> iter.map(x => string.alloc_copy(x))
                     |> iter.collect();
             });
 

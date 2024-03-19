@@ -82,7 +82,7 @@ update_diagnostics :: (c: ^Context, filepath: str) {
 
         in_file := array.first(known_files, [f](f.uri == file_uri));
         if !in_file {
-            known_files << .{ file_uri };
+            known_files << .{ string.alloc_copy(file_uri) };
             in_file = array.first(known_files, [f](f.uri == file_uri));
         }
 
