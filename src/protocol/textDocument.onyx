@@ -130,10 +130,8 @@ TextDocumentLocation :: struct {
     range: Range;
 }
 
-#inject TextDocumentPosition {
-    to_symbol_location :: (self: &TextDocumentPosition) -> SymbolLocation {
-        return .{ uri_decode(self.textDocument.uri), self.position.line + 1, self.position.character + 1 };
-    }
+TextDocumentPosition.to_symbol_location :: (self: &TextDocumentPosition) -> SymbolLocation {
+    return .{ uri_decode(self.textDocument.uri), self.position.line + 1, self.position.character + 1 };
 }
 
 

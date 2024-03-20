@@ -26,48 +26,42 @@ load_config :: (folder: str) -> bool {
     full_path := tprintf("{}/{}", folder, LSP_CONFIG_FILE_NAME);
 
     success := false;
-    for os.with_file(full_path) {
-        r := io.reader_make(it);
-        defer io.reader_free(^r);
+    use file := os.open(full_path)->or_return(false);
+    use r := io.reader_make(&file);
 
-        if s, e := encoding.ini.parse_ini_file(^r, ^global_config); s != .Success {
-            success = false;
-            global_config = .{};
-        } else {
-            success = true;
-        }
+    if s, e := encoding.ini.parse_ini_file(^r, ^global_config); s != .Success {
+        global_config = .{};
+        return false;
+    } else {
+        return true;
     }
-
-    return success;
 }
 
 load_config_new :: (folder: str) -> bool {
     global_config = LSPConfigContainer.{};
 
     full_path := os.path_join(folder, LSP_CONFIG_NEW_FILE_NAME);
-    for os.with_file(full_path) {
-        r := io.reader_make(it);
-        defer io.reader_free(&r);
+    use file := os.open(full_path)->or_return(false);
+    use r := io.reader_make(&file);
 
-        document := encoding.kdl.parse(&r)->or_return(false);
-        document->query("top() > lsp")->with([lsp_node] {
-            global_config.lsp.workingDir = lsp_node->query("working_dir")->and_then(x => x->value_or_null()->as_str()) ?? "";
-            global_config.lsp.includeDirs = lsp_node->query("include_dirs")->and_then(x => x->value_or_null()->as_str()) ?? "";
-            global_config.lsp.onyxFiles = lsp_node->query("source_files")->and_then(x => x->value_or_null()->as_str()) ?? "";
-            global_config.lsp.mode = lsp_node->query("mode")->and_then(x => x->value_or_null()->as_str()) ?? "file";
-            global_config.lsp.runtime = lsp_node->query("runtime")->and_then(x => x->value_or_null()->as_str()) ?? "onyx";
+    document := encoding.kdl.parse(&r)->or_return(false);
+    document->query("top() > lsp")->with([lsp_node] {
+        global_config.lsp.workingDir = lsp_node->query("working_dir")->and_then(x => x->value_or_null()->as_str()) ?? "";
+        global_config.lsp.includeDirs = lsp_node->query("include_dirs")->and_then(x => x->value_or_null()->as_str()) ?? "";
+        global_config.lsp.onyxFiles = lsp_node->query("source_files")->and_then(x => x->value_or_null()->as_str()) ?? "";
+        global_config.lsp.mode = lsp_node->query("mode")->and_then(x => x->value_or_null()->as_str()) ?? "file";
+        global_config.lsp.runtime = lsp_node->query("runtime")->and_then(x => x->value_or_null()->as_str()) ?? "onyx";
 
-            lsp_node->query("args")->with([args] {
-                global_config.lsp.args = args.values
-                    |> iter.as_iter()
-                    |> iter.flatten(x => x.*->as_str())
-                    |> iter.map(x => string.alloc_copy(x))
-                    |> iter.collect();
-            });
-
-            return true;
+        lsp_node->query("args")->with([args] {
+            global_config.lsp.args = args.values
+                |> iter.as_iter()
+                |> iter.flatten(x => x.*->as_str())
+                |> iter.map(x => string.alloc_copy(x))
+                |> iter.collect();
         });
-    }
+
+        return true;
+    });
 
     return false;
 }

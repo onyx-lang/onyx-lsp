@@ -1,7 +1,7 @@
 #load "core/encoding/ini"
 
 use runtime
-#inject runtime.vars.Enable_Heap_Debug :: true
+runtime.vars.Enable_Heap_Debug :: true
 
 #load_all "./src"
 #load_all "./src/protocol"

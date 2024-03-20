@@ -216,14 +216,12 @@ find_references :: (location: SymbolLocation, include_declaration := false) -> [
         symbol_id: u32;
     }
 
-    #inject
     Symbol_Resolution.compare :: (x, y: Symbol_Resolution) -> i32 {
         if x.file_id != y.file_id do return x.file_id - y.file_id;
         if x.line != y.line do return x.line - y.line;
         return x.column - y.column;
     }
 
-    #inject
     Symbol_Resolution.compare_loose :: (needle, haystack: Symbol_Resolution) -> i32 {
         if needle.file_id != haystack.file_id do return needle.file_id - haystack.file_id;
         if needle.line != haystack.line do return needle.line - haystack.line;

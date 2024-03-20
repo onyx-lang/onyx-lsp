@@ -130,12 +130,10 @@ main :: (args) => {
 
             doc.nodes << lsp_node;
 
-            for os.with_file(PACKAGE_FILE_NAME, .Write) {
-                w := io.writer_make(it);
-                defer io.writer_free(&w);
+            use file := os.open(PACKAGE_FILE_NAME, .Write).Ok->expect("Failed to open `onyx-pkg.kdl`");
+            use w := io.writer_make(&file);
 
-                kdl.write(&doc, &w);
-            }
+            kdl.write(&doc, &w);
 
             printf("'lsp' section added to onyx-pkg.kdl. You need to populate the fields for the langauge server to work.\n");
 

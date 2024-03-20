@@ -9,7 +9,6 @@ LspLogger :: struct {
 
 make_lsp_logger :: (ctx: &json_rpc.Context) => LspLogger.{ ctx }
 
-#inject
 LspLogger.as_logger :: (self: &LspLogger) => Logger.{ lsp_log, self }
 
 #local
