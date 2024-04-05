@@ -30,10 +30,9 @@ refresh_symbol_registry :: (filename: str) {
         name_length := *cast(^u32, ^symbol_info_contents.data[index + 4]);
         name        := symbol_info_contents.data[index + 8 .. index + 8 + name_length];
 
-        #if runtime.compiler_os == .Windows {
-            for &n in name {
-                if *n == '\\' do *n = '/';
-            }
+        // Replace '\' as '/' (for Windows)
+        for &n in name {
+            if *n == '\\' do *n = '/';
         }
 
         files[it] = .{id, name};

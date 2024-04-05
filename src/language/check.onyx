@@ -1,6 +1,7 @@
 
 use core {tprintf}
-use core {random, string, array, os, io, conv}
+use core {random, string, os, io, conv}
+use core.encoding {json}
 
 CompilationError :: struct {
     file: str;
@@ -13,28 +14,33 @@ CompilationError :: struct {
 run_onyx_check :: (filename: str) -> [] CompilationError {
     logf(.Debug, "Checking ({})", filename);
 
-    temporary_file_name := tprintf(".onyx_lsp_output_{}", random.between(0, 5000));
-    actual_file_name := os.path_join(global_config.lsp.workingDir, temporary_file_name);
-    defer if os.file_exists(actual_file_name) {
-        os.remove_file(actual_file_name);
+    internal_symbol_file_name := tprintf(".onyx_lsp_output_{}", random.between(0, 5000));
+    symbol_file_name := os.path_join(global_config.lsp.workingDir, internal_symbol_file_name);
+    defer if os.file_exists(symbol_file_name) {
+        os.remove_file(symbol_file_name);
     }
 
     // :Config
-    args := array.make(.["check", "--no-colors", "--no-stale-code", "--lspinfo", temporary_file_name, "--error-format", "v1", "-r", global_config.lsp.runtime]);
-    defer delete(^args);
+    use args := Array.make(.[
+        "check",
+        "--no-colors", "--no-stale-code",
+        "--lspinfo", internal_symbol_file_name,
+        "--error-format", "json",
+        "-r", global_config.lsp.runtime
+    ]);
 
     for global_config.lsp.args {
         args << it;
     }
 
-    for string.split_iter(global_config.lsp.includeDirs, #char " ") {
+    for string.split_iter(global_config.lsp.includeDirs, ' ') {
         args << "-I";
         args << it;
     }
 
     switch global_config.lsp.mode {
         case "project" {
-            array.concat(^args, string.split_iter(global_config.lsp.onyxFiles, #char " "));
+            args->concat(string.split_iter(global_config.lsp.onyxFiles, ' '));
         }
 
         case "file" {
@@ -44,60 +50,30 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
 
     proc := os.process_spawn("onyx", args, starting_directory=global_config.lsp.workingDir);
 
-    r := io.reader_make(^proc);
-    output := r->read_all();
-
-    original_output := output;
-    defer if original_output do delete(^original_output);
+    use r := io.Reader.make(^proc);
+    use output := r->read_all();
 
     errors := make([..] CompilationError);
 
     if os.process_wait(^proc) == .Success {
-        refresh_symbol_registry(actual_file_name);
-    
+        refresh_symbol_registry(symbol_file_name);
         return errors;
     }
 
-    while output {
-        line, output~ := string.bisect(output, #char "\n");
+    use error_obj := json.decode_with_result(output)->or_return(errors);
 
-        if string.starts_with(line, "(") {
-            string.advance(^line, 1);
-            filename := string.temp_copy(string.read_until_rev(^line, #char ":"));
+    for err in error_obj.root->as_array_iter() {
+        e: CompilationError;
+        e.file         = err["file"]->as_str()->temp_copy();
+        e.line         = ~~err["line"]->as_int();
+        e.start_column = ~~err["column"]->as_int();
+        e.end_column   = e.start_column + ~~err["length"]->as_int();
+        e.msg          = err["msg"]->as_str()->temp_copy();
 
-            string.advance(^line, 1);
-            line_number := conv.parse_int(^line);
-
-            string.advance(^line, 1);
-            col := conv.parse_int(^line);
-
-            string.advance(^line, 2);
-            msg := string.temp_copy(string.strip_whitespace(line));
-
-            _, output~ := string.bisect(output, #char "\n");
-            underline_line, output~ := string.bisect(output, #char "\n");
-
-            string.strip_whitespace(^underline_line);
-
-            errors << .{
-                filename, ~~line_number, ~~col, ~~col + underline_line.count, msg
-            };
-        }
+        errors->push(e);
     }
+
+    logf(.Info, "Errors: {}", errors);
 
     return errors;
 }
-
-string.read_until_rev :: (s: &str, c: u8) -> str {
-    out := *s;
-
-    while out[out.count - 1] != c && out.count > 0 {
-        out.count -= 1;
-    }
-
-    out.count -= 1;
-
-    string.advance(s, out.count);
-    return out;
-}
-

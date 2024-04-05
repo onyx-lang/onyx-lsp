@@ -31,7 +31,7 @@ process_incoming_message :: () {
         if line == "" do return;
         if line == "\r\n" do break;
 
-        key, value := string.bisect(line, #char ":");
+        key, value := string.bisect(line, ':');
         switch string.to_lowercase(key) {
             case "content-length" {
                 length = ~~(value
@@ -145,7 +145,7 @@ main :: (args) => {
     }
 
     if string.starts_with(args[0] |> string.as_str(), "--port") {
-        _, port_str := string.bisect(args[0] |> string.as_str(), #char "=");
+        _, port_str := string.bisect(args[0] |> string.as_str(), '=');
         port = ~~ conv.parse_int(port_str);
     }
 

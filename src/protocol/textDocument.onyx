@@ -33,7 +33,7 @@ TextDocumentItem :: struct {
     if item.textDocument.languageId != "onyx" do return;
 
     if !array.contains(known_files, [](it.uri == item.textDocument.uri)) {
-        known_files << .{ string.to_lowercase(string.alloc_copy(item.textDocument.uri)) };
+        known_files << .{ string.alloc_copy(item.textDocument.uri) };
     }
 }
 
@@ -66,8 +66,7 @@ Diagnostic :: struct {
 }
 
 update_diagnostics :: (c: ^Context, filepath: str) {
-    errors := run_onyx_check(filepath);
-    defer delete(^errors);
+    use errors := run_onyx_check(filepath);
 
     for ^known_files {
         if it.errors {
@@ -78,7 +77,7 @@ update_diagnostics :: (c: ^Context, filepath: str) {
     }
 
     for err in errors {
-        file_uri := string.to_lowercase(uri_encode(err.file, context.temp_allocator));
+        file_uri := uri_encode(err.file, context.temp_allocator);
 
         in_file := array.first(known_files, [f](f.uri == file_uri));
         if !in_file {
@@ -99,9 +98,7 @@ update_diagnostics :: (c: ^Context, filepath: str) {
             continue;
         }
 
-        diagnostics := make([..] Diagnostic);
-        defer delete(^diagnostics);
-
+        use diagnostics := make([..] Diagnostic);
         for &err in it.errors {
             diagnostics << .{
                 .{

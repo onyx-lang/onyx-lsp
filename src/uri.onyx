@@ -39,29 +39,29 @@ urlencode :: (s: str, allocator := context.allocator) -> str {
         //
         // This list was taken from:
         // https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding
-        match(#char ":", "%3A");
-        match(#char "/", "%2F");
-        match(#char "?", "%3F");
-        match(#char "#", "%23");
-        match(#char "[", "%5B");
-        match(#char "]", "%5D");
-        match(#char "@", "%40");
-        match(#char "!", "%21");
-        match(#char "$", "%24");
-        match(#char "&", "%26");
+        match(':', "%3A");
+        match('/', "%2F");
+        match('?', "%3F");
+        match('#', "%23");
+        match('[', "%5B");
+        match(']', "%5D");
+        match('@', "%40");
+        match('!', "%21");
+        match('$', "%24");
+        match('&', "%26");
         match(#char "'", "%27");
-        match(#char "(", "%28");
-        match(#char ")", "%29");
-        match(#char "*", "%2A");
-        match(#char "+", "%2B");
-        match(#char ",", "%2C");
-        match(#char ";", "%3B");
-        match(#char "<", "%3C");
-        match(#char "=", "%3D");
-        match(#char ">", "%3E");
-        match(#char "%", "%25");
-        match(#char " ", "%20");
-        match(#char "\"", "%22");
+        match('(', "%28");
+        match(')', "%29");
+        match('*', "%2A");
+        match('+', "%2B");
+        match(',', "%2C");
+        match(';', "%3B");
+        match('<', "%3C");
+        match('=', "%3D");
+        match('>', "%3E");
+        match('%', "%25");
+        match(' ', "%20");
+        match('"', "%22");
 
         case #default do out << ch;
 
@@ -82,7 +82,7 @@ urldecode :: (s: str, allocator := context.allocator) -> str {
     defer iter.close(i);
 
     for #no_close ch in i {
-        if ch == #char "%" {
+        if ch == '%' {
             a, e  := iter.take_one(i, no_close=true);
             b, e~ := iter.take_one(i, no_close=true);
 
@@ -90,37 +90,37 @@ urldecode :: (s: str, allocator := context.allocator) -> str {
 
             v := conv.str_to_i64(n, base=16);
             switch v {
-                match(0x3A, #char ":");
-                match(0x2F, #char "/");
-                match(0x3F, #char "?");
-                match(0x23, #char "#");
-                match(0x5B, #char "[");
-                match(0x5D, #char "]");
-                match(0x40, #char "@");
-                match(0x21, #char "!");
-                match(0x24, #char "$");
-                match(0x26, #char "&");
+                match(0x3A, ':');
+                match(0x2F, '/');
+                match(0x3F, '?');
+                match(0x23, '#');
+                match(0x5B, '[');
+                match(0x5D, ']');
+                match(0x40, '@');
+                match(0x21, '!');
+                match(0x24, '$');
+                match(0x26, '&');
                 match(0x27, #char "'");
-                match(0x28, #char "(");
-                match(0x29, #char ")");
-                match(0x2A, #char "*");
-                match(0x2B, #char "+");
-                match(0x2C, #char ",");
-                match(0x3B, #char ";");
-                match(0x3C, #char "<");
-                match(0x3D, #char "=");
-                match(0x3E, #char ">");
-                match(0x25, #char "%");
-                match(0x20, #char " ");
-                match(0x22, #char "\"");
+                match(0x28, '(');
+                match(0x29, ')');
+                match(0x2A, '*');
+                match(0x2B, '+');
+                match(0x2C, ',');
+                match(0x3B, ';');
+                match(0x3C, '<');
+                match(0x3D, '=');
+                match(0x3E, '>');
+                match(0x25, '%');
+                match(0x20, ' ');
+                match(0x22, '"');
 
                 match :: macro (from: i64, to: u8) {
                     case from do out << to;
                 }
             }
 
-        } elseif ch == #char "+" {
-            out << #char " ";
+        } elseif ch == '+' {
+            out << ' ';
         } else {
             out << ch;
         }
