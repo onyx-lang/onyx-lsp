@@ -52,7 +52,6 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
 
     use r := io.Reader.make(^proc);
     use output := r->read_all();
-
     errors := make([..] CompilationError);
 
     if os.process_wait(^proc) == .Success {
