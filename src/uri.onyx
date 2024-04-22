@@ -83,8 +83,8 @@ urldecode :: (s: str, allocator := context.allocator) -> str {
 
     for #no_close ch in i {
         if ch == '%' {
-            a, e  := iter.take_one(i, no_close=true);
-            b, e~ := iter.take_one(i, no_close=true);
+            a := iter.next(i) ?? 0;
+            b := iter.next(i) ?? 0;
 
             n := u8.[a, b];
 
