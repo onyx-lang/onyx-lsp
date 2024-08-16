@@ -203,3 +203,5 @@ onyxFiles=name_of_main_onyx_file
 workingDir=.
 """
 
+#wasm_section "onyx-command-description" "Onyx's language server"
+
