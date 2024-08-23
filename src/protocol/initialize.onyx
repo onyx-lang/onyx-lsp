@@ -10,7 +10,8 @@ use json_rpc {
 InitializeRequest :: struct {
     capabilities: ClientCapabilities;
 
-    rootPath: str;
+    rootPath: ? str;
+    rootUri: ? str;
 }
 
 ClientCapabilities :: struct {
@@ -49,16 +50,29 @@ ServerCapabilities :: struct {
     hoverProvider: bool;
 }
 
-@Method.{"initialize"}
-(c: ^Context, input: ^InitializeRequest, out: ^InitializeResult) -> Status {
-    log(.Info, core.tprintf("Client has capabilties: {*p}", ^input.capabilities));
-    log(.Info, core.tprintf("Client is in folder: {}", input.rootPath));
-
-    if !load_config_new(input.rootPath) {
-        if !load_config(input.rootPath) {
-            eprintf("Failed find 'lsp' section in 'onyx-pkg.kdl'. Also failed to open config file 'onyx-lsp.ini'. Using the defaults.\n");
+perform_initialization :: (root_path: str) {
+    if !load_config_new(root_path) {
+        if !load_config(root_path) {
+            log(.Error, "Failed find 'lsp' section in 'onyx-pkg.kdl'. Also failed to open config file 'onyx-lsp.ini'. Using the defaults.\n");
+            return
         }
     }
+
+    logf(.Info, "Successfully loaded config from '{}'", root_path)
+}
+
+@Method.{"initialize"}
+(c: &Context, input: &InitializeRequest, out: &InitializeResult) -> Status {
+    root_path := do {
+        if input.rootPath do return input.rootPath?
+        if input.rootUri  do return input.rootUri? |> uri_decode()
+        return "."
+    }
+
+    log(.Info, core.tprintf("Client has capabilties: {*p}", &input.capabilities));
+    log(.Info, core.tprintf("Client is in folder: {}", root_path));
+
+    perform_initialization(root_path);
 
     out.capabilities = .{
         positionEncoding = "utf-16",
@@ -81,7 +95,7 @@ ServerCapabilities :: struct {
 }
 
 @Notification.{"initialized"}
-(c: ^Context, _: ^void) {
+(c: &Context, _: &void) {
     log(.Info, "Successfully initialized");
 
     //

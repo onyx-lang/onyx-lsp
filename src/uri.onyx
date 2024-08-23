@@ -2,8 +2,8 @@ package main
 
 use core {string, iter, conv}
 
-uri_decode :: (uri: str) -> str {
-    a := urldecode(uri);
+uri_decode :: (uri: str, allocator := context.allocator) -> str {
+    a := urldecode(uri, allocator);
     
     if string.starts_with(a, "file://") {
         string.advance(&a, "file://".count);
@@ -24,7 +24,7 @@ uri_encode :: (s: str, allocator := context.allocator) -> str {
         string.append(&result, "/");
     }
 
-    string.append(&result, urlencode(s, allocator));
+    string.append(&result, s);//urlencode(s, allocator));
     return result;
 }
 
@@ -63,7 +63,7 @@ urlencode :: (s: str, allocator := context.allocator) -> str {
         match(' ', "%20");
         match('"', "%22");
 
-        case #default do out << ch;
+        case _ do out << ch;
 
         match :: macro (from: u8, to: str) {
             //

@@ -5,15 +5,15 @@ use runtime
 
 refresh_symbol_registry :: (filename: str) {
     // First, flush all old memory that is not needed any more.
-    if symbol_info_contents do delete(^symbol_info_contents);
-    if files                do delete(^files);
+    if symbol_info_contents do delete(&symbol_info_contents);
+    if files                do delete(&files);
 
 
     // Read in the contents of the symbol file.
     symbol_info_contents = os.get_contents(filename);
     
     // Look at the header to make sure the magic bytes are correct.
-    header := cast(^Symbol_Info_Header, symbol_info_contents.data);
+    header := cast(&Symbol_Info_Header, symbol_info_contents.data);
     if header.magic_bytes != "OSYM\x02\x00\x00\x00" {
         log(.Warning, "Bad magic bytes in OSYM file.");
         return;
@@ -26,8 +26,8 @@ refresh_symbol_registry :: (filename: str) {
 
     index := header.file_def_offset;
     for header.file_def_count {
-        id          := *cast(^u32, ^symbol_info_contents.data[index]);
-        name_length := *cast(^u32, ^symbol_info_contents.data[index + 4]);
+        id          := *cast(&u32, &symbol_info_contents.data[index]);
+        name_length := *cast(&u32, &symbol_info_contents.data[index + 4]);
         name        := symbol_info_contents.data[index + 8 .. index + 8 + name_length];
 
         // Replace '\' as '/' (for Windows)
@@ -45,10 +45,10 @@ refresh_symbol_registry :: (filename: str) {
 
     // Simply point the symbol definition and resolution tables to the file data,
     // since there is no additional processing to do.
-    symbol_definitions.data = ~~ ^symbol_info_contents[header.symbol_def_offset];
+    symbol_definitions.data = ~~ &symbol_info_contents[header.symbol_def_offset];
     symbol_definitions.count = header.symbol_def_count;
 
-    symbol_resolutions.data = ~~ ^symbol_info_contents[header.symbol_res_offset];
+    symbol_resolutions.data = ~~ &symbol_info_contents[header.symbol_res_offset];
     symbol_resolutions.count = header.symbol_res_count;
 
     symbol_docs.data = ~~ &symbol_info_contents[header.docs_offset];
@@ -108,7 +108,7 @@ lookup_symbol :: (location: SymbolLocation) -> ? Symbol_Definition {
     sym_res := &symbol_resolutions[index];
     if sym_res.line != location.line do return .{};
     if sym_res.column <= location.column && location.column <= sym_res.column + sym_res.length {
-        sym_def := ^symbol_definitions[sym_res.symbol_id];
+        sym_def := &symbol_definitions[sym_res.symbol_id];
         assert(sym_res.symbol_id == sym_def.symbol_id, "Expected symbol id's to match");
 
         return *sym_def;

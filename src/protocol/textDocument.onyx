@@ -28,7 +28,7 @@ TextDocumentItem :: struct {
 }
 
 @Notification.{"textDocument/didOpen"}
-(c: ^Context, item: ^TextDocumentItem) {
+(c: &Context, item: &TextDocumentItem) {
     // :Config ??
     if item.textDocument.languageId != "onyx" do return;
 
@@ -38,7 +38,7 @@ TextDocumentItem :: struct {
 }
 
 @Notification.{"textDocument/didClose"}
-(c: ^Context, _: ^TextDocumentItem) {
+(c: &Context, _: &TextDocumentItem) {
 }
 
 
@@ -58,22 +58,22 @@ Diagnostic :: struct {
 }
 
 @Notification.{"textDocument/didSave"}
-(c: ^Context, item: ^TextDocumentItem) {
+(c: &Context, item: &TextDocumentItem) {
     filepath := uri_decode(item.textDocument.uri);
 
     log(.Info, tprintf("Document changed, {}\n", filepath));
     update_diagnostics(c, filepath);
 }
 
-update_diagnostics :: (c: ^Context, filepath: str) {
+update_diagnostics :: (c: &Context, filepath: str) {
     use errors := run_onyx_check(filepath);
 
-    for ^known_files {
+    for &known_files {
         if it.errors {
             it.previously_had_errors = true;
         }
 
-        array.clear(^it.errors);
+        array.clear(&it.errors);
     }
 
     for err in errors {
@@ -88,11 +88,11 @@ update_diagnostics :: (c: ^Context, filepath: str) {
         in_file.errors << err;
     }
 
-    for ^known_files {
+    for &known_files {
         if !it.errors {
             if it.previously_had_errors {
                 it.previously_had_errors = false;
-                c->send_notification("textDocument/publishDiagnostics", ^.{ uri = it.uri, diagnostics = Diagnostic.[] });
+                c->send_notification("textDocument/publishDiagnostics", &.{ uri = it.uri, diagnostics = Diagnostic.[] });
             }
 
             continue;
@@ -109,7 +109,8 @@ update_diagnostics :: (c: ^Context, filepath: str) {
             };
         }
 
-        c->send_notification("textDocument/publishDiagnostics", ^.{ uri = it.uri, diagnostics = diagnostics });
+        logf(.Info, "URI OF ERROR: {}", it.uri)
+        c->send_notification("textDocument/publishDiagnostics", &.{ uri = it.uri, diagnostics = diagnostics });
     }
 }
 
@@ -133,7 +134,7 @@ TextDocumentPosition.to_symbol_location :: (self: &TextDocumentPosition) -> Symb
 
 
 @Method.{"textDocument/definition"}
-(c: ^Context, input: ^TextDocumentPosition, out: ^TextDocumentLocation) -> Status {
+(c: &Context, input: &TextDocumentPosition, out: &TextDocumentLocation) -> Status {
     // Need to un-zero-index the line and column
     location := lookup_symbol(input->to_symbol_location())->transform(get_symbol_location);
 
