@@ -50,11 +50,11 @@ run_onyx_check :: (filename: str) -> [] CompilationError {
 
     proc := os.process_spawn("onyx", args, starting_directory=global_config.lsp.workingDir);
 
-    use r := io.Reader.make(^proc);
+    use r := io.Reader.make(&proc);
     use output := r->read_all();
     errors := make([..] CompilationError);
 
-    if os.process_wait(^proc) == .Success {
+    if os.process_wait(&proc) == .Success {
         refresh_symbol_registry(symbol_file_name);
         return errors;
     }

@@ -41,14 +41,14 @@ process_incoming_message :: () {
 
             case "content-type" ---
 
-            case #default do assert(false, "Unknown header");
+            case _ do panic("Unknown header");
         }
     }
 
     if length == 0 do return;
 
     message := make([] u8, length);
-    defer delete(^message);
+    defer delete(&message);
 
     err := comm_reader->read_fill_buffer(message);
     assert(err == .None, "Failed to fill buffer, client was dumb. Dying now.");
@@ -81,7 +81,7 @@ listen_loop :: () {
             }
 
             if change == .Readable {
-                while #bottom_test io.reader_get_buffered(^comm_reader) != 0 {
+                while #bottom_test io.reader_get_buffered(&comm_reader) != 0 {
                     process_incoming_message();
                 }
             }
@@ -98,14 +98,6 @@ main :: (args) => {
     random.set_seed(os.time());
 
     if args.count > 0 && string.starts_with(args[0] |> string.as_str(), "init") {
-        //
-        // This is how the old LSP config was created.
-        // The new way uses the package file itself.
-        //
-        // for os.with_file("./onyx-lsp.ini", .Write) {
-        //     io.stream_write(it, Onyx_Lsp_Template_File);
-        // }
-
         use core.encoding.kdl
         use core.array
 
@@ -167,8 +159,8 @@ main :: (args) => {
         comm_socket = listen_socket->accept()->unwrap().socket;
         comm_socket->option(.NonBlocking, true);
 
-        comm_reader = io.reader_make(^comm_socket);
-        comm_writer = io.writer_make(^comm_socket, 0);
+        comm_reader = io.reader_make(&comm_socket);
+        comm_writer = io.writer_make(&comm_socket, 0);
     
     } else {
         // When a way to poll standard input is available,
@@ -176,30 +168,25 @@ main :: (args) => {
         // be removed.
         // runtime.fs.__enable_non_blocking_stdin();
         
-        comm_reader = io.reader_make(^stdio.stream);
+        comm_reader = io.reader_make(&stdio.stream);
         comm_writer = stdio.print_writer;
     }
 
     lsp_logger = make_lsp_logger(&json_rpc_handler);
     context.logger = lsp_logger->as_logger();
 
-    json_rpc_handler->set_output_callback(^comm_writer, (w: ^io.Writer, msg: str) => {
+    json_rpc_handler->set_output_callback(&comm_writer, (w: &io.Writer, msg: str) => {
         io.write_format(w, "Content-Length: {}\r\n", msg.length);
         io.write(w, "\r\n");
         io.write(w, msg);
         __flush_stdio();
     });
-
+    
+    perform_initialization(".")
     listen_loop();
 
     if port > 0 {
         comm_socket->close();
     }
 }
-
-Onyx_Lsp_Template_File :: """[lsp]
-mode=project
-onyxFiles=name_of_main_onyx_file
-workingDir=.
-"""
 
