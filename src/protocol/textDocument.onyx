@@ -77,7 +77,8 @@ update_diagnostics :: (c: &Context, filepath: str) {
     }
 
     for err in errors {
-        file_uri := uri_encode(err.file, context.temp_allocator);
+        // file_uri := uri_encode(err.file, context.temp_allocator);
+        file_uri := tprintf("file://{}", err.file);
 
         in_file := array.first(known_files, [f](f.uri == file_uri));
         if !in_file {
@@ -140,7 +141,8 @@ TextDocumentPosition.to_symbol_location :: (self: &TextDocumentPosition) -> Symb
 
     switch location {
         case .Some as l {
-            out.uri = uri_encode(l.filename);
+            // out.uri = uri_encode(l.filename);
+            out.uri = tprintf("file://{}", l.filename);
             out.range.start = .{ l.line - 1, l.column - 1 };
             out.range.end   = .{ l.line - 1, l.column };
 
@@ -172,7 +174,8 @@ ReferencesInput :: struct {
 
     *out = iter.as_iter(locations)
         |> iter.map(loc => TextDocumentLocation.{
-            uri = uri_encode(loc.filename),
+            // uri = uri_encode(loc.filename),
+            uri = tprintf("file://{}", loc.filename),
             range = .{
                 start = .{ loc.line - 1, loc.column - 1 },
                 end = .{ loc.line - 1, loc.column },
