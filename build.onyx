@@ -1,10 +1,10 @@
-#load "core/encoding/ini"
+#load "core:encoding/ini"
 
 use runtime
 runtime.vars.Enable_Heap_Debug :: true
 
-#load_all "./src"
-#load_all "./src/protocol"
-#load_all "./src/language"
+#load_all "src"
+#load_all "src/protocol"
+#load_all "src/language"
 
-#load "./lib/packages"
+#load "lib/packages"
