@@ -14,7 +14,7 @@ refresh_symbol_registry :: (filename: str) {
     
     // Look at the header to make sure the magic bytes are correct.
     header := cast(&Symbol_Info_Header, symbol_info_contents.data);
-    if header.magic_bytes != "OSYM\x02\x00\x00\x00" {
+    if !str.equal(header.magic_bytes, "OSYM\x02\x00\x00\x00") {
         log(.Warning, "Bad magic bytes in OSYM file.");
         return;
     }
@@ -140,7 +140,7 @@ find_references :: (location: SymbolLocation, include_declaration := false) -> [
     if !file_def do return .[];
 
     possible_symbols := iter.as_iter(symbol_definitions)
-        |> iter.filter((def, [file_def, location]) =>
+        |> iter.filter((def) use (file_def, location) =>
             def.file_id == file_def.id &&
             def.line == location.line &&
             def.column < location.column
@@ -153,7 +153,7 @@ find_references :: (location: SymbolLocation, include_declaration := false) -> [
     sym    := possible_symbols[0];
     sym_id := sym.symbol_id;
     results := iter.as_iter(symbol_resolutions)
-        |> iter.filter((res, [sym_id]) => res.symbol_id == sym_id)
+        |> iter.filter((res) use (sym_id) => res.symbol_id == sym_id)
         |> iter.map(res => SymbolLocation.{
             files[res.file_id].name,
             res.line,
